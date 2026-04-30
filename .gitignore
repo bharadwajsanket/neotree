@@ -1,9 +1,4 @@
-# build output
 neotree
 *.o
-
-# test/demo
 test_project/
-
-# system
 .DS_Store
