@@ -26,7 +26,7 @@ INSTALL_DIR="/usr/local/bin"
 
 # Pin to a specific release. Users may override:
 #   VERSION=v0.2.0 curl -sSL ... | bash
-VERSION="${VERSION:-v0.2.3}"
+VERSION="${VERSION:-v0.2.4}"
 
 # TMP_DIR is intentionally empty until mktemp runs so that cleanup()
 # is safe to call even if the script fails before mktemp.

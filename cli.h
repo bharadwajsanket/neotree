@@ -9,7 +9,7 @@
  */
 
 #define CLI_MAX_IGNORE   64    /* max --ignore entries (CLI + .gitignore) */
-#define CLI_VERSION      "0.2.0"
+#define CLI_VERSION      "0.2.4"
 #define CLI_PROGRAM      "neotree"
 
 /* ------------------------------------------------------------------ */
