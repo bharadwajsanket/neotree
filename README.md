@@ -1,7 +1,7 @@
 # neotree
 
 ![C](https://img.shields.io/badge/language-C99-blue)
-![version](https://img.shields.io/badge/version-v0.2.0-blue)
+![version](https://img.shields.io/badge/version-v0.2.4-blue)
 ![status](https://img.shields.io/badge/status-active-success)
 ![platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)
 ![license](https://img.shields.io/badge/license-MIT-green)
@@ -42,17 +42,17 @@ No filtering. No ignore rules. No sense of what's actually inside each folder.
 
 ## Features
 
-- 📁 Directory-first tree view
-- 🔍 Pattern filtering (`--pattern "*.c"`)
-- 🚫 Default + custom ignore rules (`--ignore`) with `.gitignore` support
-- 👁  Hidden file toggle (`--all`)
-- 📂 Directories-only mode (`--dirs-only`)
-- 📦 File size display (`--size`)
-- 📏 Depth limiting (`-L`)
-- 🎨 Colored output with automatic TTY detection
-- 📊 Direct file count per directory
-- ⚠️ Empty folder detection
-- ⚡ Fast and lightweight — written in C99, zero dependencies
+- Directory-first tree view
+- Pattern filtering (`--pattern "*.c"`)
+- Default + custom ignore rules (`--ignore`) with `.gitignore` support
+- Hidden file toggle (`--all`)
+- Directories-only mode (`--dirs-only`)
+- File size display (`--size`)
+- Depth limiting (`-L`)
+- Colored output with automatic TTY detection
+- Direct file count per directory
+- Empty folder detection
+- Fast and lightweight — written in C99, zero dependencies
 
 ---
 
@@ -113,8 +113,7 @@ VERSION=v0.2.0 curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotr
 ```
 
 The installer:
-- requires no `git` — downloads a source tarball directly
-- falls back to the `main` branch if the tag is not found
+- downloads a prebuilt binary (no compiler required)
 - uses `sudo` only for the install step if `/usr/local/bin` is not writable
 
 ---
@@ -166,9 +165,9 @@ Download and run directly — no compiler required:
 
 | Platform | File |
 |---|---|
-| Linux (x86_64) | `neotree-linux-x86_64` |
-| macOS (x86_64 / arm64) | `neotree-macos` |
-| Windows | `neotree.exe` |
+| Linux (x86_64) | `neotree-linux` |
+| macOS | `neotree-macos` |
+| Windows | `neotree-windows.exe` |
 
 ---
 
@@ -257,7 +256,7 @@ neotree/
 - [x] `--size` file size display
 - [ ] Glob pattern improvements (`**/*.c`, character classes)
 - [ ] `--stats` flag for aggregate size info
-- [ ] Prebuilt binaries via GitHub Actions
+- [x] Prebuilt binaries via GitHub Actions
 - [ ] Windows native path separator polish
 
 ---
