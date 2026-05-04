@@ -4,15 +4,14 @@
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash
 #
+# Override version:
+#   VERSION=v0.2.3 curl -sSL ... | bash
+#
 # What it does:
 #   1. Detects OS (Linux / macOS)
-#   2. Checks for a C compiler (gcc preferred, clang fallback)
-#   3. Checks for git
-#   4. Clones the repo into a temp dir
-#   5. Compiles with detected compiler
-#   6. Installs binary to /usr/local/bin (uses sudo if needed)
-#   7. Cleans up
-#   8. Verifies the install with `neotree --version`
+#   2. Downloads the prebuilt binary for VERSION from GitHub Releases
+#   3. Installs binary to /usr/local/bin (uses sudo if needed)
+#   4. Verifies the install with `neotree --version`
 
 set -euo pipefail
 
@@ -20,16 +19,18 @@ set -euo pipefail
 #  Config                                                              #
 # ------------------------------------------------------------------ #
 
-REPO="https://github.com/bharadwajsanket/neotree.git"
+REPO_OWNER="bharadwajsanket"
+REPO_NAME="neotree"
 BINARY="neotree"
 INSTALL_DIR="/usr/local/bin"
-SRCS="main.c tree.c fs.c cli.c utils.c"
 
-# Pin to a specific release tag, or "main" for latest.
-# To release a version: git tag v0.1.0 && git push --tags
-# Then bump this to VERSION="v0.1.0"
-VERSION="main"
-TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t neotree)"
+# Pin to a specific release. Users may override:
+#   VERSION=v0.2.0 curl -sSL ... | bash
+VERSION="${VERSION:-v0.2.3}"
+
+# TMP_DIR is intentionally empty until mktemp runs so that cleanup()
+# is safe to call even if the script fails before mktemp.
+TMP_DIR=""
 
 # ------------------------------------------------------------------ #
 #  Helpers                                                             #
@@ -52,9 +53,10 @@ success() { printf "${GRN}  ✓${RST} %s\n" "$*"; }
 warn()    { printf "${YLW}  !${RST} %s\n" "$*"; }
 die()     { printf "${RED}${BLD}error:${RST} %s\n" "$*" >&2; exit 1; }
 
-# Cleanup on exit (success or failure)
+# Cleanup on exit (success or failure).
+# Guard on -n so that an early failure before mktemp doesn't rm "/".
 cleanup() {
-    rm -rf "$TMP_DIR"
+    [ -n "$TMP_DIR" ] && rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
 
@@ -66,95 +68,77 @@ printf "\n${BLD}neotree installer${RST}\n"
 printf "─────────────────\n\n"
 
 # ------------------------------------------------------------------ #
-#  1. Detect OS                                                        #
+#  1. Detect OS → select binary name                                   #
 # ------------------------------------------------------------------ #
 
 OS="$(uname -s)"
 case "$OS" in
-    Linux*)   OS_NAME="Linux"  ;;
-    Darwin*)  OS_NAME="macOS"  ;;
-    *)        die "Unsupported OS: $OS. Only Linux and macOS are supported." ;;
+    Linux*)   OS_NAME="Linux";  ASSET="neotree-linux"  ;;
+    Darwin*)  OS_NAME="macOS";  ASSET="neotree-macos"  ;;
+    *)        die "Unsupported OS: $OS. Only Linux and macOS are supported.
+       For Windows, download neotree.exe from:
+       https://github.com/${REPO_OWNER}/${REPO_NAME}/releases" ;;
 esac
+
 info "Detected OS: $OS_NAME"
-info "Version: $VERSION"
+info "Version:     $VERSION"
 
 # ------------------------------------------------------------------ #
-#  2. Compiler detection (gcc → clang → fail)                         #
+#  2. curl check                                                       #
 # ------------------------------------------------------------------ #
 
-CC=""
-if command -v gcc >/dev/null 2>&1; then
-    CC="gcc"
-    success "Found compiler: gcc ($(gcc --version | head -1))"
-elif command -v clang >/dev/null 2>&1; then
-    CC="clang"
-    warn "gcc not found — falling back to clang ($(clang --version | head -1))"
-else
-    die "No C compiler found. Install gcc or clang and re-run:
-       Linux:  sudo apt install gcc   (Debian/Ubuntu)
-               sudo dnf install gcc   (Fedora)
-       macOS:  xcode-select --install"
+if ! command -v curl >/dev/null 2>&1; then
+    die "curl is required but not installed.
+       Linux:  sudo apt install curl
+       macOS:  curl ships with macOS; run: xcode-select --install"
 fi
 
 # ------------------------------------------------------------------ #
-#  3. git check                                                        #
+#  3. Download prebuilt binary                                         #
 # ------------------------------------------------------------------ #
 
-if ! command -v git >/dev/null 2>&1; then
-    die "git is required but not installed.
-       Linux:  sudo apt install git
-       macOS:  xcode-select --install"
+TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t neotree)"
+
+DOWNLOAD_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${VERSION}/${ASSET}"
+
+info "Downloading ${ASSET} ${VERSION}..."
+
+if ! curl -fL "$DOWNLOAD_URL" -o "$TMP_DIR/$BINARY"; then
+    die "Download failed.
+       URL: $DOWNLOAD_URL
+       Check that ${VERSION} exists at:
+       https://github.com/${REPO_OWNER}/${REPO_NAME}/releases"
 fi
-success "Found git ($(git --version))"
+
+success "Downloaded $ASSET"
 
 # ------------------------------------------------------------------ #
-#  4. Clone                                                            #
+#  4. Install                                                          #
 # ------------------------------------------------------------------ #
 
-info "Starting installation..."
-info "Cloning neotree ($VERSION)..."
-if ! git clone --depth=1 --branch "$VERSION" --quiet "$REPO" "$TMP_DIR" 2>/dev/null; then
-    warn "Could not checkout '$VERSION', falling back to default branch"
-    git clone --depth=1 --quiet "$REPO" "$TMP_DIR"
+chmod +x "$TMP_DIR/$BINARY"
+mkdir -p "$INSTALL_DIR"
+
+# Warn if an existing installation will be replaced
+if command -v "$BINARY" >/dev/null 2>&1; then
+    warn "Existing neotree found, replacing it"
 fi
-success "Cloned repository"
-
-# ------------------------------------------------------------------ #
-#  5. Compile                                                          #
-# ------------------------------------------------------------------ #
-
-info "Building with $CC..."
-cd "$TMP_DIR" || die "Failed to enter build directory: $TMP_DIR"
-
-# word-split intentional: SRCS is a space-separated string
-# shellcheck disable=SC2086
-"$CC" -std=c99 -Wall -Wextra -O2 $SRCS -o "$BINARY" \
-    || die "Build failed. Check the output above for compiler errors."
-
-success "Build successful"
-
-# ------------------------------------------------------------------ #
-#  6. Install                                                          #
-# ------------------------------------------------------------------ #
 
 info "Installing to ${INSTALL_DIR}/${BINARY}..."
 
-# Check if install dir is writable without sudo
 if [ -w "$INSTALL_DIR" ]; then
-    mv "$BINARY" "$INSTALL_DIR/$BINARY"
+    mv "$TMP_DIR/$BINARY" "$INSTALL_DIR/$BINARY"
 else
-    # Need sudo — tell the user explicitly rather than silently escalating
     warn "$INSTALL_DIR is not writable. Requesting sudo for install step only."
-    sudo mv "$BINARY" "$INSTALL_DIR/$BINARY"
+    sudo mv "$TMP_DIR/$BINARY" "$INSTALL_DIR/$BINARY"
 fi
 
 success "Installed to $INSTALL_DIR/$BINARY"
 
 # ------------------------------------------------------------------ #
-#  7. Verify                                                           #
+#  5. Verify                                                           #
 # ------------------------------------------------------------------ #
 
-# Make sure the binary is actually on PATH now
 if ! command -v "$BINARY" >/dev/null 2>&1; then
     warn "neotree was installed to $INSTALL_DIR but it's not in your PATH."
     warn "Add this to your shell config:"
@@ -163,10 +147,12 @@ if ! command -v "$BINARY" >/dev/null 2>&1; then
 fi
 
 printf "\n"
-success "$($BINARY --version) is ready."
+success "$("$BINARY" --version) installed successfully."
 printf "\n${BLD}Run it:${RST}\n"
 printf "  neotree\n"
+printf "  neotree --all\n"
+printf "  neotree --size\n"
 printf "  neotree -L 2 .\n"
 printf "  neotree --pattern '*.c' src/\n"
 printf "\n${BLD}To uninstall:${RST}\n"
-printf "  sudo rm $INSTALL_DIR/$BINARY\n\n"
+printf "  sudo rm %s/%s\n\n" "$INSTALL_DIR" "$BINARY"
