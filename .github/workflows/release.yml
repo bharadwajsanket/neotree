@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create releases and upload assets
+
+jobs:
+  # ------------------------------------------------------------------ #
+  #  Linux                                                               #
+  # ------------------------------------------------------------------ #
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
+              main.c tree.c fs.c cli.c utils.c \
+              -o neotree-linux
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neotree-linux
+          path: neotree-linux
+
+  # ------------------------------------------------------------------ #
+  #  macOS                                                               #
+  # ------------------------------------------------------------------ #
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
+              main.c tree.c fs.c cli.c utils.c \
+              -o neotree-macos
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neotree-macos
+          path: neotree-macos
+
+  # ------------------------------------------------------------------ #
+  #  Windows (cross-compiled via MinGW on Ubuntu)                        #
+  # ------------------------------------------------------------------ #
+  build-windows:
+    name: Build (Windows)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MinGW
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Build
+        run: |
+          x86_64-w64-mingw32-gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
+              main.c tree.c fs.c cli.c utils.c \
+              -o neotree-windows.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neotree-windows
+          path: neotree-windows.exe
+
+  # ------------------------------------------------------------------ #
+  #  Create GitHub Release and attach all binaries                       #
+  # ------------------------------------------------------------------ #
+  release:
+    name: Create Release
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      # download-artifact@v4 places each artifact in its own subdirectory;
+      # flatten so softprops/action-gh-release can glob them simply.
+      - name: Flatten dist/
+        run: |
+          find dist/ -mindepth 2 -type f -exec mv -t dist/ {} +
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: neotree ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/neotree-linux
+            dist/neotree-macos
+            dist/neotree-windows.exe
