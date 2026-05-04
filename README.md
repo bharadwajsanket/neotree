@@ -227,6 +227,27 @@ neotree/
 
 ---
 
+## Contributing
+
+This project is intentionally simple and hackable.
+
+If something breaks — open an issue.  
+If something feels missing — build it.  
+If you can improve performance or UX — send a PR.
+
+Good first contributions:
+- edge cases in `.gitignore` parsing
+- new flags (sorting, JSON output, etc.)
+- performance improvements
+- cross-platform fixes (especially Windows)
+
+No strict rules — keep it clean and readable.
+
+Open to experiments.
+
+---
+
 ## License
+
 
 MIT — [Sanket Bharadwaj](https://github.com/bharadwajsanket)
