@@ -72,7 +72,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neotree-windows
+          name: neotree-windows.exe
           path: neotree-windows.exe
 
   # ------------------------------------------------------------------ #
