@@ -88,12 +88,6 @@ jobs:
         with:
           path: dist/
 
-      # download-artifact@v4 places each artifact in its own subdirectory;
-      # flatten so softprops/action-gh-release can glob them simply.
-      - name: Flatten dist/
-        run: |
-          find dist/ -mindepth 2 -type f -exec mv -t dist/ {} +
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -102,6 +96,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            dist/neotree-linux
-            dist/neotree-macos
-            dist/neotree-windows.exe
+            dist/neotree-linux/neotree-linux
+            dist/neotree-macos/neotree-macos
+            dist/neotree-windows.exe/neotree-windows.exe
