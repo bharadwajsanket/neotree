@@ -152,7 +152,34 @@ sudo rm /usr/local/bin/neotree
 |---|---|
 | Linux | ✅ Fully supported |
 | macOS | ✅ Fully supported |
-| Windows | ⚠️ Download `.exe` from [Releases](https://github.com/bharadwajsanket/neotree/releases) (source builds require a POSIX-compatible toolchain) |
+| Windows | ✅ Install via [install.ps1](#windows-usage) — no compiler or admin rights required |
+
+---
+
+## Windows Usage
+
+Install with PowerShell (no admin required):
+
+```powershell
+irm https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.ps1 | iex
+```
+
+Install a specific version:
+
+```powershell
+$env:VERSION="v0.2.4"; irm https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.ps1 | iex
+```
+
+This will:
+- download the prebuilt `neotree.exe` from GitHub Releases
+- install it to `%LOCALAPPDATA%\Programs\neotree`
+- add that directory to your user PATH
+
+After installation, restart your terminal and run:
+
+```
+neotree
+```
 
 ---
 
