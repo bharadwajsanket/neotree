@@ -17,6 +17,7 @@ Built for developers who need fast, focused directory exploration — not just a
 ```bash
 curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash
 ```
+Installs in seconds. No compiler required.
 
 ---
 
