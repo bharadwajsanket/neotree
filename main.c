@@ -8,6 +8,7 @@
  *   4. Print the root label.
  *   5. Hand off to tree_walk().
  *   6. Print the summary line.
+ *   7. Release opts memory via cli_opts_free().
  */
 
 #include <stdio.h>
@@ -30,6 +31,7 @@ int main(int argc, char *argv[]) {
     if (!fs_is_dir(opts.root)) {
         fprintf(stderr, "neotree: '%s' is not a directory or does not exist\n",
                 opts.root);
+        cli_opts_free(&opts);
         return 1;
     }
 
@@ -47,6 +49,9 @@ int main(int argc, char *argv[]) {
     printf("\n%d director%s, %d file%s\n",
            stats.total_dirs,  stats.total_dirs  == 1 ? "y" : "ies",
            stats.total_files, stats.total_files == 1 ? "" : "s");
+
+    /* ---- release heap memory owned by opts ---- */
+    cli_opts_free(&opts);
 
     return 0;
 }

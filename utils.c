@@ -104,10 +104,24 @@ const char *color_for_name(const char *name, int is_dir) {
 /*  Matching                                                            */
 /* ------------------------------------------------------------------ */
 
+/*
+ * ignore_match — returns 1 if `name` matches any entry in the ignore list.
+ *
+ * Each ignore entry is tested two ways:
+ *   1. Exact string match  (e.g. "build", ".cache")
+ *   2. Suffix/glob match   (e.g. "*.log", "*.o")
+ *
+ * This lets .gitignore lines like "*.log" work without a separate
+ * full glob engine — pattern_match() already handles the *.ext form.
+ */
 int ignore_match(const char *name,
                  const char * const ignore[], int ignore_count) {
     for (int i = 0; i < ignore_count; i++) {
+        /* Exact match */
         if (strcmp(name, ignore[i]) == 0)
+            return 1;
+        /* Suffix/glob match (*.ext) */
+        if (ignore[i][0] == '*' && pattern_match(name, ignore[i]))
             return 1;
     }
     return 0;
@@ -124,6 +138,14 @@ int pattern_match(const char *name, const char *pattern) {
 
     /* exact match */
     return strcmp(name, pattern) == 0;
+}
+
+/*
+ * is_hidden — returns 1 if the entry name starts with '.'.
+ * Used by tree.c to filter hidden files when --all is not set.
+ */
+int is_hidden(const char *name) {
+    return (name[0] == '.');
 }
 
 /* ------------------------------------------------------------------ */

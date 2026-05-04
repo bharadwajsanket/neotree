@@ -6,7 +6,7 @@
  *
  * Covers:
  *   - color / ANSI escape management
- *   - entry name matching (ignore list, file pattern)
+ *   - entry name matching (ignore list, file pattern, hidden filter)
  *   - simple dynamic array for collecting dir entries
  */
 
@@ -37,8 +37,14 @@ const char *color_for_name(const char *name, int is_dir);
 /* ------------------------------------------------------------------ */
 
 /*
- * ignore_match — returns 1 if `name` is in the ignore list.
- *                Simple exact-match for now; extend here if needed.
+ * ignore_match — returns 1 if `name` should be ignored.
+ *
+ * Checks:
+ *   1. Exact match against each entry in the ignore list.
+ *   2. Suffix/glob match (*.ext) against each entry in the ignore list.
+ *
+ * The same pattern_match() logic is used so that .gitignore lines like
+ * "*.log" also work as ignore patterns, not just as file-selection globs.
  */
 int ignore_match(const char *name,
                  const char * const ignore[], int ignore_count);
@@ -50,6 +56,12 @@ int ignore_match(const char *name,
  *   otherwise     → exact match.
  */
 int pattern_match(const char *name, const char *pattern);
+
+/*
+ * is_hidden — returns 1 if `name` starts with '.'.
+ * Used to implement --all filtering in tree.c.
+ */
+int is_hidden(const char *name);
 
 /* ------------------------------------------------------------------ */
 /*  Dynamic entry array (used by tree.c to collect + sort entries)     */
