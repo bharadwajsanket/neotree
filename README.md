@@ -6,58 +6,80 @@
 ![platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
-A fast, minimal tree CLI with filtering, ignore rules, and per-directory insights.
+**A fast, minimal tree CLI with filtering, ignore rules, and per-directory insights.**
 
-Built for developers who need fast, focused directory exploration — not just a static tree view.
+Built for developers who need focused directory exploration — not just a static tree dump.
 
 ---
 
-## Quick Install
+## Install
+
+### Linux / macOS
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash
 ```
-Installs in seconds. No compiler required.
+
+Pin a specific version:
+
+```bash
+VERSION=v0.2.4 curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.ps1 | iex
+```
+
+Pin a specific version:
+
+```powershell
+$env:VERSION="v0.2.4"; irm https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.ps1 | iex
+```
+
+### Manual Build
+
+```bash
+git clone https://github.com/bharadwajsanket/neotree
+cd neotree
+gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
+    main.c tree.c fs.c cli.c utils.c \
+    -o neotree
+```
+
+### Uninstall
+
+```bash
+# Linux / macOS
+sudo rm /usr/local/bin/neotree
+
+# Windows
+Remove-Item "$env:LOCALAPPDATA\Programs\neotree\neotree.exe"
+```
 
 ---
 
-## Why neotree?
+## What it does
 
-The standard `tree` command shows you structure. That's where it stops.
+The standard `tree` command shows you structure and stops there.  
+`neotree` adds everything you actually need:
 
-No filtering. No ignore rules. No sense of what's actually inside each folder.
-
-`neotree` is built around how developers actually explore projects — you want to see only the `.c` files, skip `node_modules`, and know at a glance which directories have content and which are empty.
-
-## Why not `tree`?
-
-`tree` is great for structure.  
-`neotree` adds:
-
-- filtering by extension or name
-- smart ignore rules (with sane defaults, and `.gitignore` support)
-- per-directory file counts and empty folder detection
-- hidden file toggle, size display, and dirs-only mode
-
----
-
-## Features
-
-- Directory-first tree view
-- Pattern filtering (`--pattern "*.c"`)
-- Default + custom ignore rules (`--ignore`) with `.gitignore` support
-- Hidden file toggle (`--all`)
-- Directories-only mode (`--dirs-only`)
-- File size display (`--size`)
-- Depth limiting (`-L`)
-- Colored output with automatic TTY detection
-- Direct file count per directory
-- Empty folder detection
-- Fast and lightweight — written in C99, zero dependencies
+| Capability | Flag |
+|---|---|
+| Show only `.c` files | `--pattern "*.c"` |
+| Skip `node_modules`, `build`, etc. | `--ignore <name>` |
+| Respect `.gitignore` automatically | _(no flag needed)_ |
+| Show hidden dot-files | `--all` |
+| Directories only | `--dirs-only` |
+| File sizes | `--size` |
+| Limit depth | `-L <n>` |
+| Per-directory file counts | _(always on)_ |
+| Detect empty folders | _(always on)_ |
 
 ---
 
-## Example
+## Examples
 
 ```
 $ neotree src/
@@ -86,7 +108,7 @@ $ neotree --all --size .
 ```
 
 ```
-$ neotree --dirs-only .
+$ neotree --dirs-only -L 2 .
 
 .
 ├── src/  [empty]
@@ -97,126 +119,23 @@ $ neotree --dirs-only .
 
 ---
 
-## Installation
-
-### Quick Install (Recommended)
-
-Install the latest stable version:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash
-```
-
-Install a specific version:
-
-```bash
-VERSION=v0.2.0 curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash
-```
-
-The installer:
-- downloads a prebuilt binary (no compiler required)
-- uses `sudo` only for the install step if `/usr/local/bin` is not writable
-
----
-
-### Manual Build
-
-```bash
-git clone https://github.com/bharadwajsanket/neotree
-cd neotree
-gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
-    main.c tree.c fs.c cli.c utils.c \
-    -o neotree
-```
-
-**With Makefile:**
-
-```bash
-make
-sudo make install   # installs to /usr/local/bin
-```
-
----
-
-### Uninstall
-
-```bash
-sudo rm /usr/local/bin/neotree
-```
-
----
-
-## Platform Support
-
-| Platform | Status |
-|---|---|
-| Linux | ✅ Fully supported |
-| macOS | ✅ Fully supported |
-| Windows | ✅ Install via [install.ps1](#windows-usage) — no compiler or admin rights required |
-
----
-
-## Windows Usage
-
-Install with PowerShell (no admin required):
-
-```powershell
-irm https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.ps1 | iex
-```
-
-Install a specific version:
-
-```powershell
-$env:VERSION="v0.2.4"; irm https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.ps1 | iex
-```
-
-This will:
-- download the prebuilt `neotree.exe` from GitHub Releases
-- install it to `%LOCALAPPDATA%\Programs\neotree`
-- add that directory to your user PATH
-
-After installation, restart your terminal and run:
-
-```
-neotree
-```
-
----
-
-## Releases
-
-Prebuilt binaries are available on the [GitHub Releases page](https://github.com/bharadwajsanket/neotree/releases):
-
-https://github.com/bharadwajsanket/neotree/releases
-
-Download and run directly — no compiler required:
-
-| Platform | File |
-|---|---|
-| Linux (x86_64) | `neotree-linux` |
-| macOS | `neotree-macos` |
-| Windows | `neotree-windows.exe` |
-
----
-
 ## Usage
 
 ```bash
-neotree                                    # current directory
-neotree src/                               # specific path
-neotree --all                              # show hidden files (dot-files)
-neotree --dirs-only                        # show directories only
-neotree --size                             # show file sizes in KB
-neotree -L 2                               # limit to 2 levels deep
-neotree --pattern "*.c"                    # only show .c files
-neotree --ignore dist                      # skip a directory
-neotree --ignore dist --ignore .cache      # multiple ignores
-neotree --no-color | tee tree.txt          # pipe-safe plain output
-neotree --no-dirs-first                    # alphabetical order (no grouping)
+neotree                               # current directory
+neotree src/                          # specific path
+neotree --all                         # show hidden files
+neotree --dirs-only                   # directories only
+neotree --size                        # show file sizes in KB
+neotree -L 2                          # limit to 2 levels
+neotree --pattern "*.c"               # only .c files
+neotree --ignore dist                 # skip a directory
+neotree --ignore dist --ignore .cache # multiple ignores
+neotree --no-color | tee tree.txt     # pipe-safe plain text
+neotree --no-dirs-first               # pure alphabetical order
 ```
 
-> 💡 Always quote patterns to prevent shell glob expansion.  
-> Use `neotree --pattern "*.c"`, not `neotree --pattern *.c`.
+> Always quote patterns: `--pattern "*.c"`, not `--pattern *.c`
 
 ---
 
@@ -225,10 +144,10 @@ neotree --no-dirs-first                    # alphabetical order (no grouping)
 | Flag | Description |
 |---|---|
 | `-L <depth>` | Limit display depth |
-| `--all` | Show hidden files and directories (starting with `.`) |
+| `--all` | Show hidden files and directories (dot-entries) |
 | `--dirs-only` | Show directories only; files are counted but not printed |
 | `--size` | Show file size in KB next to each file |
-| `--pattern <glob>` | Show only files matching pattern (e.g. `*.c`, `*.py`) |
+| `--pattern <glob>` | Show only files matching pattern (`*.c`, `*.py`) |
 | `--ignore <name>` | Ignore a file or directory by name (repeatable) |
 | `--no-color` | Disable ANSI colors |
 | `--no-dirs-first` | Disable directory-first ordering |
@@ -239,27 +158,46 @@ neotree --no-dirs-first                    # alphabetical order (no grouping)
 
 ## .gitignore Support
 
-If a `.gitignore` file exists in the root directory being scanned, neotree reads it automatically and merges the patterns into its ignore list.
+If a `.gitignore` exists in the scanned root, neotree reads it automatically.
 
-Rules applied (intentionally minimal — not the full gitignore spec):
+Rules applied (minimal — not the full gitignore spec):
 
-- Empty lines and comments (`#`) are skipped
-- Trailing `/` is stripped (directory-only marker; neotree matches by name)
-- Exact name matches (e.g. `build`, `.DS_Store`)
-- Suffix glob matches (e.g. `*.o`, `*.log`)
-- Duplicates are suppressed
+- Empty lines and `#` comments are skipped
+- Trailing `/` is stripped (matched by name regardless of type)
+- Exact name matches: `build`, `.DS_Store`
+- Suffix glob matches: `*.o`, `*.log`
+- Duplicates suppressed
 
-> **Note:** `.gitignore` rules apply even when `--all` is used. `--all` only controls the hidden-file filter, not the ignore list.
+> `.gitignore` rules apply even with `--all`. The `--all` flag only controls the hidden-file filter, not the ignore list.
+
+---
+
+## Platform Support
+
+| Platform | Status |
+|---|---|
+| Linux | ✅ Fully supported |
+| macOS | ✅ Fully supported |
+| Windows | ✅ Prebuilt `.exe` — install via PowerShell, no admin required |
+
+Prebuilt binaries for every release:
+**<https://github.com/bharadwajsanket/neotree/releases>**
+
+| Platform | Binary |
+|---|---|
+| Linux (x86_64) | `neotree-linux` |
+| macOS | `neotree-macos` |
+| Windows | `neotree-windows.exe` |
 
 ---
 
 ## Notes
 
-- Automatically ignores: `.git`, `node_modules`, `__pycache__`, `target`, `build`
-- Color is auto-disabled when output is piped — no need to pass `--no-color` manually
-- `[empty]` means the directory has no direct visible files (subdirectories may still exist)
+- Auto-ignores: `.git`, `node_modules`, `__pycache__`, `target`, `build`
+- Color is auto-disabled when piped — no need for `--no-color`
+- `[empty]` = directory has no direct visible files (subdirs may still exist)
 - Symlinks are listed but never followed (no infinite recursion)
-- Single-pass traversal per directory — each folder is read exactly once
+- Single-pass traversal — each directory is read exactly once
 
 ---
 
@@ -282,19 +220,13 @@ neotree/
 - [x] `--all` hidden file toggle
 - [x] `--dirs-only` mode
 - [x] `--size` file size display
+- [x] Prebuilt binaries via GitHub Actions
 - [ ] Glob pattern improvements (`**/*.c`, character classes)
 - [ ] `--stats` flag for aggregate size info
-- [x] Prebuilt binaries via GitHub Actions
 - [ ] Windows native path separator polish
 
 ---
 
 ## License
 
-MIT
-
----
-
-## Author
-
-Sanket Bharadwaj
+MIT — [Sanket Bharadwaj](https://github.com/bharadwajsanket)
