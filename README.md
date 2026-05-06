@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌲 neotree
+# neotree
 
 **A fast, minimal, developer-focused directory tree CLI — written in C.**
 
