@@ -1,39 +1,36 @@
 /*
- * tree.c — directory traversal and rendering
+ * tree.c -- directory traversal and rendering
  *
  * Design:
  *   1. Open the directory once with fs_opendir / fs_readdir.
- *   2. Collect all visible entries into an entry_vec_t (heap array).
- *   3. Sort in place (dirs-first + alpha, or pure alpha).
- *   4. Render each entry with the right prefix characters.
+ *   2. Collect all visible entries into an entry_vec_t.
+ *   3. Sort in place (dirs-first + secondary key, or flat secondary key).
+ *   4. Render each entry with the right prefix / connector characters.
  *   5. Recurse into sub-directories.
  *
- * Box-drawing characters used:
- *   ├── (U+251C U+2500 U+2500)  — non-last sibling
- *   └── (U+2514 U+2500 U+2500)  — last sibling
- *   │   (U+2502)                — continuing branch
- *       (four spaces)           — closed branch
+ * Box-drawing characters (UTF-8):
+ *   ├── (U+251C U+2500 U+2500)  non-last sibling
+ *   └── (U+2514 U+2500 U+2500)  last sibling
+ *   │   (U+2502)                continuing branch
+ *       (four spaces)           closed branch
  *
- * All box chars are UTF-8 encoded; they render correctly on any
- * modern terminal (Linux, macOS, Windows Terminal / WT).
+ * Path-aware glob matching:
+ *   tree_walk receives a rel_prefix string that tracks the relative
+ *   path from the traversal root (e.g. "" at root, "src/" one level
+ *   in, "src/internal/" two levels in).  When entry_is_visible tests
+ *   a file against a ** pattern it constructs rel_path = rel_prefix +
+ *   name and calls glob_match_path(rel_path, pattern).  This gives
+ *   correct path-aware semantics: "src/STARSTAR/.h" will NOT match "cli.h".
  *
- * Features:
- *   --all        : show hidden entries (name starts with '.')
- *   --dirs-only  : skip printing files; still recurse into dirs
- *   --size       : append "  (N KB)" to file lines using stat()
+ * --dirs-only / is_last correctness:
+ *   Files are collected but not rendered when --dirs-only is active.
+ *   last_rendered_idx scans backward to find the last entry that will
+ *   actually be printed, so BRANCH_LAST is placed correctly.
  *
- * --dirs-only / is_last correctness
- * ----------------------------------
- * When --dirs-only is active, files are collected into the vec (so that
- * sort order and stats remain correct) but are not rendered.  The
- * is_last connector must therefore be based on the index of the last
- * entry that will *actually be rendered*, not the last entry in vec.
- *
- * We compute this with last_rendered_idx: scan backwards from the end
- * of vec to find the last entry that is either a dir, or a file when
- * --dirs-only is off.  Entries before that index that happen to be
- * files get BRANCH_MID (they're still in the vec, just invisible),
- * which keeps the prefix stack consistent.
+ * Dual-stream output:
+ *   render_entry writes to `out` (primary, may contain ANSI codes) and
+ *   to `export_out` (plain text, no ANSI codes) in one pass.
+ *   For markdown exports a second tree_walk pass is made from main.c.
  */
 
 /* _DEFAULT_SOURCE for stat on glibc; must precede system headers */
@@ -50,39 +47,55 @@
 #include <stdlib.h>
 
 /* ------------------------------------------------------------------ */
-/*  Platform: file size                                                 */
+/*  Platform: file size and modification time                           */
 /* ------------------------------------------------------------------ */
 
 #ifdef _WIN32
 #  include <windows.h>
 
-/*
- * get_file_size_kb — return file size rounded to KB, or -1 on error.
- * Windows: GetFileAttributesEx provides size without a full stat().
- */
 static long get_file_size_kb(const char *path) {
     WIN32_FILE_ATTRIBUTE_DATA info;
     if (!GetFileAttributesExA(path, GetFileExInfoStandard, &info))
         return -1;
-    /* Combine high and low 32-bit parts */
     long long bytes = ((long long)info.nFileSizeHigh << 32) |
                       (unsigned long)info.nFileSizeLow;
     return (long)((bytes + 512) / 1024);
 }
 
+static long get_mtime(const char *path) {
+    WIN32_FILE_ATTRIBUTE_DATA info;
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &info))
+        return 0;
+    ULARGE_INTEGER uli;
+    uli.LowPart  = info.ftLastWriteTime.dwLowDateTime;
+    uli.HighPart = info.ftLastWriteTime.dwHighDateTime;
+    return (long)((uli.QuadPart - 116444736000000000ULL) / 10000000ULL);
+}
+
+static int is_executable(const char *path) {
+    (void)path;
+    return 0;  /* Windows has no exec bits; colouring is by extension */
+}
+
 #else  /* POSIX */
 #  include <sys/stat.h>
 
-/*
- * get_file_size_kb — return file size rounded to nearest KB, or -1 on
- * error (e.g. permission denied, broken symlink).
- * Uses stat() so symlink targets are followed; consistent with the size
- * a reader would actually see.
- */
 static long get_file_size_kb(const char *path) {
     struct stat st;
     if (stat(path, &st) != 0) return -1;
     return (long)((st.st_size + 512) / 1024);
+}
+
+static long get_mtime(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    return (long)st.st_mtime;
+}
+
+static int is_executable(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    return (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
 }
 
 #endif /* _WIN32 */
@@ -93,6 +106,7 @@ static long get_file_size_kb(const char *path) {
 
 #define MAX_PATH       4096
 #define MAX_PREFIX     2048
+#define MAX_REL        4096   /* max length of relative path string */
 
 /* Visual branch characters (UTF-8) */
 #define BRANCH_MID     "\xe2\x94\x9c\xe2\x94\x80\xe2\x94\x80 "  /* ├── */
@@ -101,39 +115,133 @@ static long get_file_size_kb(const char *path) {
 #define BRANCH_EMPTY   "    "
 
 /* ------------------------------------------------------------------ */
-/*  entry_is_visible — single, authoritative visibility gate           */
+/*  entry_is_visible                                                    */
 /* ------------------------------------------------------------------ */
 
 /*
- * entry_is_visible — returns 1 if the entry should appear in the tree.
+ * entry_is_visible -- returns 1 if the entry should appear in the tree.
  *
- * Called identically in the collection loop (tree_walk) and the
- * counting helper (count_direct_files) so behaviour is always
- * consistent.
+ * Filter order (do not reorder):
+ *   1. Ignore list  -- applies regardless of --all.
+ *   2. Hidden files -- skipped unless --all is set.
+ *   3. Pattern      -- for files only.
+ *                      Simple (non-**) patterns: test against name.
+ *                      ** patterns: test against full relative path
+ *                        (rel_prefix + name) via glob_match_path().
+ *                      Directories always pass to allow recursion.
  *
- * Filter order (mandatory — do not reorder):
- *   1. Ignore list  — applies regardless of --all.
- *      .gitignore rules take effect here too.
- *   2. Hidden files — skipped unless --all is set.
- *      Note: step 1 already catches ignored dot-entries, so a
- *      .gitignore entry for e.g. ".DS_Store" works even with --all.
- *   3. Pattern      — file-only; directories always pass.
+ * rel_prefix is the path from the traversal root to the current
+ * directory, always ending in '/' (or "" at root).
  */
 static int entry_is_visible(const char *name, int is_dir,
+                             const char *rel_prefix,
                              const cli_opts_t *opts) {
-    /* 1. Ignore list (CLI --ignore + .gitignore merged) */
+    /* 1. Ignore list */
     if (ignore_match(name, opts->ignore, opts->ignore_count))
         return 0;
 
-    /* 2. Hidden entries (dot-files / dot-dirs) */
+    /* 2. Hidden entries */
     if (!opts->show_all && is_hidden(name))
         return 0;
 
-    /* 3. Pattern filter — directories are never filtered by pattern */
-    if (!is_dir && !pattern_match(name, opts->pattern))
-        return 0;
+    /* 3. Pattern filter (files only) */
+    if (!is_dir && opts->pattern) {
+        if (pattern_has_doublestar(opts->pattern)) {
+            /* Path-aware match: build "rel_prefix/name" and test */
+            char rel_path[MAX_REL];
+            int n = snprintf(rel_path, sizeof(rel_path), "%s%s",
+                             rel_prefix, name);
+            if (n < 0 || n >= (int)sizeof(rel_path))
+                return 0;  /* path too long -- skip safely */
+            if (!glob_match_path(rel_path, opts->pattern))
+                return 0;
+        } else {
+            /* Simple pattern: match against filename only */
+            if (!pattern_match(name, opts->pattern))
+                return 0;
+        }
+    }
+    /* Directories always pass the pattern filter */
 
     return 1;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Plain-text export helper                                            */
+/* ------------------------------------------------------------------ */
+
+static void fprint_clean(FILE *f,
+                          const char *prefix,
+                          const char *connector,
+                          const char *name,
+                          int         is_dir,
+                          int         n_files,
+                          long        size_kb) {
+    if (!f) return;
+
+    if (is_dir) {
+        if (n_files == 0)
+            fprintf(f, "%s%s%s/  [empty]\n", prefix, connector, name);
+        else if (n_files > 0)
+            fprintf(f, "%s%s%s/  (%d file%s)\n",
+                    prefix, connector, name,
+                    n_files, n_files == 1 ? "" : "s");
+        else
+            fprintf(f, "%s%s%s/\n", prefix, connector, name);
+    } else {
+        if (size_kb >= 0)
+            fprintf(f, "%s%s%s  (%ld KB)\n", prefix, connector, name, size_kb);
+        else
+            fprintf(f, "%s%s%s\n", prefix, connector, name);
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/*  render_entry                                                        */
+/* ------------------------------------------------------------------ */
+
+static void render_entry(const char *prefix,
+                          int         is_last,
+                          const char *name,
+                          const char *full_path,
+                          int         is_dir,
+                          int         n_files,
+                          long        size_kb,
+                          FILE       *out,
+                          FILE       *export_out) {
+    const char *connector = is_last ? BRANCH_LAST : BRANCH_MID;
+
+    const char *color;
+    if (is_dir) {
+        color = color_for_name(name, 1);
+    } else if (full_path && is_executable(full_path)) {
+        color = color_for_exec();
+    } else {
+        color = color_for_name(name, 0);
+    }
+    const char *reset = color_reset();
+
+    if (is_dir) {
+        if (n_files == 0)
+            fprintf(out, "%s%s%s%s/%s  [empty]\n",
+                    prefix, connector, color, name, reset);
+        else if (n_files > 0)
+            fprintf(out, "%s%s%s%s/%s  (%d file%s)\n",
+                    prefix, connector, color, name, reset,
+                    n_files, n_files == 1 ? "" : "s");
+        else
+            fprintf(out, "%s%s%s%s/%s\n",
+                    prefix, connector, color, name, reset);
+    } else {
+        if (size_kb >= 0)
+            fprintf(out, "%s%s%s%s%s  (%ld KB)\n",
+                    prefix, connector, color, name, reset, size_kb);
+        else
+            fprintf(out, "%s%s%s%s%s\n",
+                    prefix, connector, color, name, reset);
+    }
+
+    fprint_clean(export_out, prefix, connector, name, is_dir, n_files, size_kb);
 }
 
 /* ------------------------------------------------------------------ */
@@ -141,60 +249,15 @@ static int entry_is_visible(const char *name, int is_dir,
 /* ------------------------------------------------------------------ */
 
 /*
- * render_entry — print one line of the tree.
+ * count_direct_files -- count direct file children of path that pass
+ * entry_is_visible().  Used for the "(N files)" directory annotation.
  *
- *   prefix    visual indent built from parent calls
- *   is_last   whether this is the last *rendered* entry in its parent
- *   name      entry's filename
- *   is_dir    1 = directory
- *   n_files   dirs only: direct visible file count (-1 → suppress annotation)
- *   size_kb   files only: size in KB (-1 → size not shown)
+ * Returns -1 on open failure.
+ * Returns 0 when --dirs-only is active (annotation would mislead).
  */
-static void render_entry(const char *prefix,
-                         int         is_last,
-                         const char *name,
-                         int         is_dir,
-                         int         n_files,
-                         long        size_kb) {
-    const char *connector = is_last ? BRANCH_LAST : BRANCH_MID;
-    const char *color     = color_for_name(name, is_dir);
-    const char *reset     = color_reset();
-
-    if (is_dir) {
-        if (n_files == 0)
-            printf("%s%s%s%s/%s  [empty]\n",
-                   prefix, connector, color, name, reset);
-        else if (n_files > 0)
-            printf("%s%s%s%s/%s  (%d file%s)\n",
-                   prefix, connector, color, name, reset,
-                   n_files, n_files == 1 ? "" : "s");
-        else
-            /* n_files == -1: suppress annotation */
-            printf("%s%s%s%s/%s\n",
-                   prefix, connector, color, name, reset);
-    } else {
-        if (size_kb >= 0)
-            printf("%s%s%s%s%s  (%ld KB)\n",
-                   prefix, connector, color, name, reset, size_kb);
-        else
-            printf("%s%s%s%s%s\n",
-                   prefix, connector, color, name, reset);
-    }
-}
-
-/*
- * count_direct_files — count direct file children of `path` that pass
- * entry_is_visible().
- *
- * Returns -1 on open failure (permission denied, etc.).
- * Returns 0 when --dirs-only is active: no files will be shown, so the
- * annotation would be misleading.
- *
- * Uses the same entry_is_visible() predicate as tree_walk so the count
- * always matches what is actually rendered.
- */
-static int count_direct_files(const char *path, const cli_opts_t *opts) {
-    /* When --dirs-only is active, files aren't shown → don't annotate */
+static int count_direct_files(const char *path,
+                               const char *rel_prefix,
+                               const cli_opts_t *opts) {
     if (opts->dirs_only) return 0;
 
     fs_dir_t *dir = fs_opendir(path);
@@ -204,8 +267,8 @@ static int count_direct_files(const char *path, const cli_opts_t *opts) {
     int count = 0;
 
     while (fs_readdir(dir, &e)) {
-        if (e.type == FS_ENTRY_DIR) continue;       /* only count files */
-        if (!entry_is_visible(e.name, 0, opts)) continue;
+        if (e.type == FS_ENTRY_DIR) continue;
+        if (!entry_is_visible(e.name, 0, rel_prefix, opts)) continue;
         count++;
     }
 
@@ -214,15 +277,8 @@ static int count_direct_files(const char *path, const cli_opts_t *opts) {
 }
 
 /*
- * last_rendered_idx — find the index of the last entry in vec that will
- * actually be printed.
- *
- * When --dirs-only is off, this is simply vec.len - 1.
- * When --dirs-only is on, files are collected but not printed; the last
- * *printed* entry is the last directory in the vec.
- *
- * Returns -1 if nothing will be rendered (all entries are files and
- * --dirs-only is active).
+ * last_rendered_idx -- find the index of the last entry that will
+ * actually be rendered (needed for correct BRANCH_LAST placement).
  */
 static int last_rendered_idx(const entry_vec_t *vec, int dirs_only) {
     for (int i = vec->len - 1; i >= 0; i--) {
@@ -237,19 +293,21 @@ static int last_rendered_idx(const entry_vec_t *vec, int dirs_only) {
 /* ------------------------------------------------------------------ */
 
 void tree_walk(const char       *path,
-               const char       *prefix,
+               const char       *tree_prefix,
+               const char       *rel_prefix,
                const cli_opts_t *opts,
                int               current_depth,
-               tree_stats_t     *stats) {
+               tree_stats_t     *stats,
+               FILE             *out,
+               FILE             *export_out,
+               ext_table_t      *ext_tbl) {
 
-    /* Depth limit: stop before opening the directory */
     if (opts->max_depth != -1 && current_depth >= opts->max_depth)
         return;
 
-    /* ---- 1. Collect all visible entries ---- */
+    /* ---- 1. Collect visible entries ---- */
     fs_dir_t *dir = fs_opendir(path);
     if (!dir) {
-        /* Permission denied or other error — report and skip subtree */
         fprintf(stderr, "neotree: cannot open '%s'\n", path);
         return;
     }
@@ -261,10 +319,20 @@ void tree_walk(const char       *path,
     while (fs_readdir(dir, &e)) {
         int is_dir = (e.type == FS_ENTRY_DIR);
 
-        if (!entry_is_visible(e.name, is_dir, opts))
+        if (!entry_is_visible(e.name, is_dir, rel_prefix, opts))
             continue;
 
-        if (!entry_vec_push(&vec, e.name, is_dir)) {
+        long sz = -1, mt = 0;
+        if (!is_dir) {
+            char child_path[MAX_PATH];
+            fs_join(child_path, sizeof(child_path), path, e.name);
+            if (opts->sort_by == SORT_SIZE || opts->show_size)
+                sz = get_file_size_kb(child_path);
+            if (opts->sort_by == SORT_MODIFIED)
+                mt = get_mtime(child_path);
+        }
+
+        if (!entry_vec_push(&vec, e.name, is_dir, sz, mt)) {
             fprintf(stderr, "neotree: out of memory\n");
             break;
         }
@@ -272,9 +340,9 @@ void tree_walk(const char       *path,
     fs_closedir(dir);
 
     /* ---- 2. Sort ---- */
-    entry_vec_sort(&vec, opts->dirs_first);
+    entry_vec_sort(&vec, opts->dirs_first, opts->sort_by);
 
-    /* ---- 3. Determine last rendered index for correct connectors ---- */
+    /* ---- 3. Last rendered index ---- */
     int last_idx = last_rendered_idx(&vec, opts->dirs_only);
 
     /* ---- 4. Render + recurse ---- */
@@ -287,48 +355,49 @@ void tree_walk(const char       *path,
         if (ent->is_dir) {
             stats->total_dirs++;
 
-            /*
-             * is_last must reflect whether this is the last *rendered*
-             * entry, not just the last entry in vec.  With --dirs-only,
-             * trailing files in vec are invisible, so the last directory
-             * should receive BRANCH_LAST even if files follow it in vec.
-             */
             int is_last = (i == last_idx);
 
-            /*
-             * Count direct visible files inside this dir for the
-             * annotation.  Suppress if at the depth leaf (won't recurse)
-             * or if --dirs-only (no files shown → annotation misleads).
-             */
+            /* Build the relative path for this directory for sub-tree */
+            char child_rel[MAX_REL];
+            snprintf(child_rel, sizeof(child_rel), "%s%s/",
+                     rel_prefix, ent->name);
+
             int n_files = -1;
             int at_leaf = (opts->max_depth != -1 &&
                            current_depth + 1 >= opts->max_depth);
             if (!at_leaf)
-                n_files = count_direct_files(child_path, opts);
+                n_files = count_direct_files(child_path, child_rel, opts);
 
-            render_entry(prefix, is_last, ent->name, 1, n_files, -1);
+            render_entry(tree_prefix, is_last, ent->name, NULL,
+                         1, n_files, -1, out, export_out);
 
-            /* Build the prefix continuation for children */
             char new_prefix[MAX_PREFIX];
             snprintf(new_prefix, sizeof(new_prefix), "%s%s",
-                     prefix,
+                     tree_prefix,
                      is_last ? BRANCH_EMPTY : BRANCH_VERT);
 
-            tree_walk(child_path, new_prefix, opts,
-                      current_depth + 1, stats);
+            tree_walk(child_path, new_prefix, child_rel, opts,
+                      current_depth + 1, stats,
+                      out, export_out, ext_tbl);
 
         } else {
-            /* Always count files regardless of --dirs-only */
             stats->total_files++;
+
+            if (ext_tbl)
+                ext_table_add(ext_tbl, ent->name);
 
             if (!opts->dirs_only) {
                 int is_last = (i == last_idx);
 
                 long size_kb = -1;
-                if (opts->show_size)
-                    size_kb = get_file_size_kb(child_path);
+                if (opts->show_size) {
+                    size_kb = ent->size_kb >= 0
+                              ? ent->size_kb
+                              : get_file_size_kb(child_path);
+                }
 
-                render_entry(prefix, is_last, ent->name, 0, 0, size_kb);
+                render_entry(tree_prefix, is_last, ent->name, child_path,
+                             0, 0, size_kb, out, export_out);
             }
         }
     }

@@ -9,10 +9,20 @@
  */
 
 #define CLI_MAX_IGNORE   64    /* max --ignore entries (CLI + .gitignore) */
-#define CLI_VERSION      "0.2.4"
+#define CLI_VERSION      "0.3.0"
 #define CLI_PROGRAM      "neotree"
 
 /* ------------------------------------------------------------------ */
+
+/*
+ * Sort keys for --sort.
+ * SORT_NAME is the default (alphabetical within group).
+ */
+typedef enum {
+    SORT_NAME     = 0,   /* alphabetical (default)          */
+    SORT_SIZE     = 1,   /* ascending file size             */
+    SORT_MODIFIED = 2    /* most-recently-modified first    */
+} sort_by_t;
 
 typedef struct {
     const char *root;           /* path to display (default ".")       */
@@ -23,6 +33,10 @@ typedef struct {
     int         show_all;       /* 1 = show hidden (dot) entries       */
     int         dirs_only;      /* 1 = print directories only          */
     int         show_size;      /* 1 = print file size in KB           */
+    sort_by_t   sort_by;        /* sort key within each group          */
+    int         ext_summary;    /* 1 = print extension summary         */
+    const char *export_txt;     /* path for plain-text export; NULL=no */
+    const char *export_md;      /* path for markdown export;  NULL=no  */
 
     const char *ignore[CLI_MAX_IGNORE];
     int         ignore_count;

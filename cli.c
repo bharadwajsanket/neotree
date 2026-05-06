@@ -16,6 +16,10 @@
  *   show_all        = 0  (hide dot-files)
  *   dirs_only       = 0  (show files and dirs)
  *   show_size       = 0  (no size annotation)
+ *   sort_by         = SORT_NAME (alphabetical)
+ *   ext_summary     = 0  (no summary)
+ *   export_txt      = NULL (no export)
+ *   export_md       = NULL (no export)
  *   ignore          = { ".git", "node_modules", "__pycache__", "target", "build" }
  *   gitignore_start = ignore_count after defaults + CLI --ignore args
  *
@@ -181,18 +185,35 @@ void cli_usage(void) {
         "\n"
         "Options:\n"
         "  -L <depth>            Limit display depth (1 = root entries only)\n"
-        "  --ignore <name>       Ignore entries matching name (repeatable)\n"
-        "  --pattern <glob>      Show only files matching pattern (e.g. *.c)\n"
-        "  --all                 Show hidden files (starting with .)\n"
-        "  --dirs-only           Show directories only\n"
+        "  --ignore <name>       Ignore entries by name (repeatable)\n"
+        "  --pattern <glob>      Show only files matching glob (e.g. *.c or **/*.h)\n"
+        "  --all                 Show hidden files (dot-entries)\n"
+        "  --dirs-only           Show directories only; summary omits file count\n"
         "  --size                Show file sizes in KB\n"
+        "  --sort <key>          Sort entries: name (default), size, modified\n"
+        "  --ext-summary         Print extension counts after the tree\n"
+        "  --export-txt <file>   Write plain-text tree to file (no ANSI codes)\n"
+        "  --export-markdown <file>  Write markdown (fenced) tree to file\n"
         "  --no-color            Disable ANSI color output\n"
-        "  --no-dirs-first       List files and dirs in mixed order\n"
+        "  --no-dirs-first       Disable directory-first ordering\n"
         "  -h, --help            Show this help and exit\n"
         "  --version             Show version and exit\n"
         "\n"
-        "Default ignored dirs: .git, node_modules, __pycache__, target, build\n"
-        ".gitignore in root directory is read and merged automatically.\n"
+        "Default ignored: .git, node_modules, __pycache__, target, build\n"
+        ".gitignore in the root directory is loaded automatically.\n"
+        "\n"
+        "Glob patterns (--pattern):\n"
+        "  *.c           match .c files in the current directory\n"
+        "  **/*.c        match .c files at any depth\n"
+        "  src/**/*.h    match .h files only under src/ (path-aware)\n"
+        "  foo/**/bar.py match bar.py anywhere under foo/\n"
+        "\n"
+        "  Path-aware note: 'src/**/*.h' will NOT match './cli.h'.\n"
+        "  Use '**/*.h' to match .h files everywhere.\n"
+        "\n"
+        "Export notes:\n"
+        "  Export files are automatically excluded from the tree output.\n"
+        "  Markdown export wraps the tree in a fenced code block.\n"
         "\n"
         "Examples:\n"
         "  neotree\n"
@@ -202,6 +223,12 @@ void cli_usage(void) {
         "  neotree --size\n"
         "  neotree -L 2 .\n"
         "  neotree --pattern '*.c' src/\n"
+        "  neotree --pattern '**/*.h'\n"
+        "  neotree --pattern 'src/**/*.h' .\n"
+        "  neotree --sort size\n"
+        "  neotree --ext-summary\n"
+        "  neotree --export-txt tree.txt\n"
+        "  neotree --export-markdown tree.md\n"
         "  neotree --ignore dist --ignore .cache .\n"
         "  neotree --no-color | tee tree.txt\n"
     );
@@ -218,6 +245,10 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
     opts->show_all       = 0;
     opts->dirs_only      = 0;
     opts->show_size      = 0;
+    opts->sort_by        = SORT_NAME;
+    opts->ext_summary    = 0;
+    opts->export_txt     = NULL;
+    opts->export_md      = NULL;
     opts->ignore_count   = 0;
     opts->gitignore_start = 0; /* will be set after argv loop */
 
@@ -277,6 +308,29 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
         if (strcmp(arg, "--size") == 0)      { opts->show_size = 1; continue; }
         if (strcmp(arg, "--no-color") == 0)  { opts->no_color  = 1; continue; }
         if (strcmp(arg, "--no-dirs-first") == 0) { opts->dirs_first = 0; continue; }
+        if (strcmp(arg, "--ext-summary") == 0)   { opts->ext_summary = 1; continue; }
+
+        if (strcmp(arg, "--sort") == 0) {
+            if (i + 1 >= argc) die_usage("--sort requires an argument", NULL);
+            const char *key = argv[++i];
+            if (strcmp(key, "name") == 0)         opts->sort_by = SORT_NAME;
+            else if (strcmp(key, "size") == 0)    opts->sort_by = SORT_SIZE;
+            else if (strcmp(key, "modified") == 0) opts->sort_by = SORT_MODIFIED;
+            else die_usage("--sort must be 'name', 'size', or 'modified'", key);
+            continue;
+        }
+
+        if (strcmp(arg, "--export-txt") == 0) {
+            if (i + 1 >= argc) die_usage("--export-txt requires a filename", NULL);
+            opts->export_txt = argv[++i];
+            continue;
+        }
+
+        if (strcmp(arg, "--export-markdown") == 0) {
+            if (i + 1 >= argc) die_usage("--export-markdown requires a filename", NULL);
+            opts->export_md = argv[++i];
+            continue;
+        }
 
         die_usage("unknown option", arg);
     }

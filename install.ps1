@@ -23,7 +23,7 @@ $ErrorActionPreference = 'Stop'
 
 $RepoOwner  = "bharadwajsanket"
 $RepoName   = "neotree"
-$Version    = if ($env:VERSION) { $env:VERSION } else { "v0.2.4" }
+$Version    = if ($env:VERSION) { $env:VERSION } else { "v0.3.0" }
 $Asset      = "neotree-windows.exe"
 $BinaryName = "neotree.exe"
 $InstallDir = Join-Path $env:LOCALAPPDATA "Programs\neotree"
