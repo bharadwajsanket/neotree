@@ -17,6 +17,8 @@
 
 <br/>
 
+</div>
+
 ```
 $ neotree --pattern 'src/**/*.c' --size --sort size .
 
@@ -29,8 +31,6 @@ $ neotree --pattern 'src/**/*.c' --size --sort size .
 
 1 directory, 4 files
 ```
-
-</div>
 
 ---
 
