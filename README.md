@@ -18,7 +18,7 @@
 <br/>
 
 ```
-$ neotree --pattern 'src/**/*.c' --sort size .
+$ neotree --pattern 'src/**/*.c' --size --sort size .
 
 .
 └── src/
@@ -221,24 +221,26 @@ neotree --sort modified --no-dirs-first .
 ## 📊 Extension Summary
 
 ```bash
-neotree --ext-summary src/
+neotree --ext-summary .
 ```
 
 ```
-src/
+.
 ├── cli.c
 ├── cli.h
+├── fs.c
+├── fs.h
 ├── main.c
 ├── tree.c
 ├── tree.h
 ├── utils.c
 └── utils.h
 
-0 directories, 7 files
+0 directories, 9 files
 
 Extension summary:
-  .c            4
-  .h            3
+  .c            5
+  .h            4
 ```
 
 Respects all active filters (`--pattern`, `--ignore`, `--all`).
@@ -304,12 +306,11 @@ File entries are colored by type when writing to a terminal:
 | Color | Types |
 |---|---|
 | **Bold blue** | Directories |
-| **Cyan** | `.c`, `.h`, `.cpp`, `.hpp`, `.cc`, `.cxx` |
+| **Cyan** | `.c`, `.h`, `.cpp`, `.hpp`, `.cc`, `.cxx`, `.json`, `.toml`, `.yaml`, `.yml` |
 | **Yellow** | `.py` |
 | **Green** | `.md`, `.txt`, `.rst` |
 | **Magenta** | `.sh`, `.bash`, `.zsh`, `.fish`, `.html`, `.css`, `.js`, `.ts` |
 | **Purple** | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.bmp` |
-| **Cyan** | `.json`, `.toml`, `.yaml`, `.yml` |
 | **Red** | Executable files (POSIX exec bit set) |
 
 Color is **automatically disabled** when stdout is piped — no need for `--no-color`.
