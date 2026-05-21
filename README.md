@@ -8,11 +8,10 @@
 [![Language](https://img.shields.io/badge/language-C99-00ADD8?style=flat-square&logo=c)](https://en.wikipedia.org/wiki/C99)
 [![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=flat-square)](#platform-support)
-[![Status](https://img.shields.io/badge/status-active-success?style=flat-square)](#)
 
 <br/>
 
-> Built for developers who need **focused directory exploration** — not just a static tree dump.  
+> Built for developers who need **focused directory exploration** — not just a static tree dump.
 > Fast. Lightweight. No dependencies. UNIX-native.
 
 <br/>
@@ -43,7 +42,7 @@ $ neotree --pattern 'src/**/*.c' --size --sort size .
 | 🗂️ **Sorting** | Sort by `name`, `size`, or `modified` — within directory-first groups |
 | 📊 **Extension summary** | Count files by extension across the whole tree |
 | 📄 **Export** | Write clean plain-text or fenced markdown tree to a file |
-| 🙈 **Ignore rules** | `--ignore`, `.gitignore` auto-loading, default ignores |
+| 🙈 **Ignore rules** | `--ignore`, `.gitignore` auto-loading, built-in defaults |
 | 👁️ **Hidden files** | Toggle dot-entries with `--all` |
 | 📁 **Dirs only** | `--dirs-only` shows just the structure, no file noise |
 | 📏 **Depth limit** | `-L <n>` stops recursion at any level |
@@ -97,9 +96,8 @@ $env:VERSION="v0.3.1"; irm https://raw.githubusercontent.com/bharadwajsanket/neo
 ```bash
 git clone https://github.com/bharadwajsanket/neotree
 cd neotree
-gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
-    main.c tree.c fs.c cli.c utils.c \
-    -o neotree
+make
+sudo make install
 ```
 
 > Requires only a C99-compatible compiler (`gcc` or `clang`). No other dependencies.
@@ -110,7 +108,7 @@ gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
 # Homebrew
 brew uninstall neotree
 
-# Linux / macOS (manual)
+# Linux / macOS (manual install)
 sudo rm /usr/local/bin/neotree
 
 # Windows (PowerShell)
@@ -118,7 +116,6 @@ Remove-Item "$env:LOCALAPPDATA\Programs\neotree\neotree.exe"
 ```
 
 ---
-
 
 ## 🚀 Quick Start
 
@@ -332,21 +329,18 @@ Color is **automatically disabled** when stdout is piped — no need for `--no-c
 
 | Platform | Status | Install |
 |---|---|---|
-| **Linux** | ✅ Fully supported | `install.sh` |
-| **macOS** | ✅ Fully supported | `install.sh` |
+| **Linux** | ✅ Fully supported | Homebrew · `install.sh` · build from source |
+| **macOS** | ✅ Fully supported | Homebrew · `install.sh` · build from source |
 | **Windows** | ✅ Prebuilt `.exe`, no admin required | `install.ps1` |
 
-Prebuilt binaries for every release:  
+Prebuilt binaries for every release:
 **→ [github.com/bharadwajsanket/neotree/releases](https://github.com/bharadwajsanket/neotree/releases)**
 
-| Platform | Binary filename |
+| Platform | Binary |
 |---|---|
 | Linux (x86_64) | `neotree-linux` |
-| macOS | `neotree-macos` |
+| macOS (ARM64) | `neotree-macos` |
 | Windows (x86_64) | `neotree-windows.exe` |
-
-**macOS note:** System headers live under the Xcode SDK path, not `/usr/include`.  
-If `/usr/include` is absent, neotree correctly reports it as missing — this is expected macOS behavior.
 
 ---
 
@@ -354,9 +348,9 @@ If `/usr/include` is absent, neotree correctly reports it as missing — this is
 
 ```
 neotree/
-├── main.c        entry point — init, validate, walk, summarise, export
-├── cli.c / cli.h argument parsing, .gitignore loading, defaults
-├── fs.c  / fs.h  portable filesystem abstraction (POSIX + Win32)
+├── main.c          entry point — init, validate, walk, summarise, export
+├── cli.c / cli.h   argument parsing, .gitignore loading, defaults
+├── fs.c  / fs.h    portable filesystem abstraction (POSIX + Win32)
 ├── utils.c / utils.h  colors, glob engine, sorting, ext-summary table
 └── tree.c / tree.h    directory traversal and rendering
 ```
@@ -383,6 +377,7 @@ neotree/
 - [x] Export self-exclusion (no self-reference in generated tree)
 - [x] Windows path separator normalization in `--pattern`
 - [x] Native Windows hidden-file attribute support
+- [x] Homebrew tap (`bharadwajsanket/neotree`)
 - [x] Prebuilt binaries via GitHub Actions CI
 - [ ] `--stats` aggregate size totals
 
@@ -390,11 +385,11 @@ neotree/
 
 ## 🤝 Contributing
 
-This project is intentionally small and hackable.  
+This project is intentionally small and hackable.
 The entire codebase is ~5 files, ~1400 lines of C.
 
-**If something breaks** → open an issue  
-**If something feels missing** → build it  
+**If something breaks** → open an issue
+**If something feels missing** → build it
 **If you can improve UX or performance** → send a PR
 
 Good first contributions:
