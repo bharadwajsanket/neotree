@@ -55,7 +55,14 @@ $ neotree --pattern 'src/**/*.c' --size --sort size .
 
 ## 📦 Installation
 
-### Linux / macOS
+### Homebrew (macOS / Linux)
+
+```bash
+brew tap bharadwajsanket/neotree
+brew install neotree
+```
+
+### Linux / macOS (curl)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash
@@ -100,7 +107,10 @@ gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
 ### Uninstall
 
 ```bash
-# Linux / macOS
+# Homebrew
+brew uninstall neotree
+
+# Linux / macOS (manual)
 sudo rm /usr/local/bin/neotree
 
 # Windows (PowerShell)
@@ -108,6 +118,7 @@ Remove-Item "$env:LOCALAPPDATA\Programs\neotree\neotree.exe"
 ```
 
 ---
+
 
 ## 🚀 Quick Start
 
