@@ -1,0 +1,11 @@
+neotree
+*.o
+.DS_Store
+*.d
+neotree.dSYM/
+tree.txt
+tree.md
+both.txt
+both.md
+out.txt
+test_sandbox/
