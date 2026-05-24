@@ -61,6 +61,16 @@ brew tap bharadwajsanket/neotree
 brew install neotree
 ```
 
+<details>
+<summary>Uninstallation</summary>
+
+```bash
+brew uninstall neotree
+brew untap bharadwajsanket/neotree
+```
+
+</details>
+
 ### Linux / macOS (curl)
 
 ```bash
@@ -72,6 +82,15 @@ curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install
 
 ```bash
 VERSION=v0.4.0 bash <(curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh)
+```
+
+</details>
+
+<details>
+<summary>Uninstallation</summary>
+
+```bash
+sudo rm -f /usr/local/bin/neotree /usr/local/bin/ntree
 ```
 
 </details>
@@ -91,6 +110,16 @@ $env:VERSION="v0.4.0"; irm https://raw.githubusercontent.com/bharadwajsanket/neo
 
 </details>
 
+<details>
+<summary>Uninstallation</summary>
+
+```powershell
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\neotree"
+# Note: Remove the directory from your PATH environment variable if needed.
+```
+
+</details>
+
 ### Build from Source
 
 ```bash
@@ -99,6 +128,15 @@ cd neotree
 make
 sudo make install
 ```
+
+<details>
+<summary>Uninstallation</summary>
+
+```bash
+sudo make uninstall
+```
+
+</details>
 
 ---
 
