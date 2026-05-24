@@ -120,7 +120,7 @@ const char *utils_basename(const char *path);
 typedef struct {
     char  *name;     /* heap-allocated copy */
     int    is_dir;
-    long   size_kb;  /* file size in KB; -1 if unknown or directory */
+    long long size_bytes; /* file size in bytes; -1 if unknown or directory */
     long   mtime;    /* modification time (seconds since epoch); 0 if unknown */
 } entry_t;
 
@@ -132,9 +132,11 @@ typedef struct {
 
 void  entry_vec_init(entry_vec_t *v);
 int   entry_vec_push(entry_vec_t *v, const char *name, int is_dir,
-                     long size_kb, long mtime);
-void  entry_vec_sort(entry_vec_t *v, int dirs_first, sort_by_t sort_by);
+                     long long size_bytes, long mtime);
+void  entry_vec_sort(entry_vec_t *v, int dirs_first, sort_by_t sort_by, int reverse);
 void  entry_vec_free(entry_vec_t *v);
+
+void  format_size(long long bytes, char *buf, size_t buf_size);
 
 /* ------------------------------------------------------------------ */
 /*  Extension summary table                                             */
@@ -154,6 +156,5 @@ typedef struct {
 
 void ext_table_init(ext_table_t *t);
 void ext_table_add(ext_table_t *t, const char *filename);
-void ext_table_print(const ext_table_t *t);
 
 #endif /* UTILS_H */

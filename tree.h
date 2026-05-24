@@ -31,6 +31,10 @@
 typedef struct {
     int total_files;
     int total_dirs;
+    long long total_size_bytes;
+    char largest_file[256];
+    long long largest_file_size_bytes;
+    int max_depth;
 } tree_stats_t;
 
 /*

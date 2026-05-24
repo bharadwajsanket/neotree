@@ -296,7 +296,7 @@ void entry_vec_init(entry_vec_t *v) {
 }
 
 int entry_vec_push(entry_vec_t *v, const char *name, int is_dir,
-                   long size_kb, long mtime) {
+                   long long size_bytes, long mtime) {
     if (v->len == v->cap) {
         int new_cap = v->cap ? v->cap * 2 : ENTRY_VEC_INIT_CAP;
         entry_t *tmp = realloc(v->data, (size_t)new_cap * sizeof(entry_t));
@@ -305,10 +305,10 @@ int entry_vec_push(entry_vec_t *v, const char *name, int is_dir,
         v->cap  = new_cap;
     }
 
-    v->data[v->len].name    = strdup(name);
-    v->data[v->len].is_dir  = is_dir;
-    v->data[v->len].size_kb = size_kb;
-    v->data[v->len].mtime   = mtime;
+    v->data[v->len].name       = strdup(name);
+    v->data[v->len].is_dir     = is_dir;
+    v->data[v->len].size_bytes = size_bytes;
+    v->data[v->len].mtime      = mtime;
 
     if (!v->data[v->len].name) return 0;
 
@@ -328,23 +328,31 @@ int entry_vec_push(entry_vec_t *v, const char *name, int is_dir,
 /* ------------------------------------------------------------------ */
 
 static sort_by_t g_sort_by = SORT_NAME;
+static int       g_reverse = 0;
 
 static int cmp_secondary(const entry_t *ea, const entry_t *eb) {
+    int res = 0;
     switch (g_sort_by) {
     case SORT_SIZE:
-        if (ea->size_kb != eb->size_kb)
-            return (ea->size_kb < eb->size_kb) ? -1 : 1;
-        return strcmp(ea->name, eb->name);
+        if (ea->size_bytes != eb->size_bytes)
+            res = (ea->size_bytes < eb->size_bytes) ? -1 : 1;
+        else
+            res = strcmp(ea->name, eb->name);
+        break;
 
     case SORT_MODIFIED:
         if (ea->mtime != eb->mtime)
-            return (ea->mtime > eb->mtime) ? -1 : 1;
-        return strcmp(ea->name, eb->name);
+            res = (ea->mtime > eb->mtime) ? -1 : 1;
+        else
+            res = strcmp(ea->name, eb->name);
+        break;
 
     case SORT_NAME:
     default:
-        return strcmp(ea->name, eb->name);
+        res = strcmp(ea->name, eb->name);
+        break;
     }
+    return g_reverse ? -res : res;
 }
 
 static int cmp_flat(const void *a, const void *b) {
@@ -361,9 +369,10 @@ static int cmp_dirs_first(const void *a, const void *b) {
     return cmp_secondary(ea, eb);
 }
 
-void entry_vec_sort(entry_vec_t *v, int dirs_first, sort_by_t sort_by) {
+void entry_vec_sort(entry_vec_t *v, int dirs_first, sort_by_t sort_by, int reverse) {
     if (v->len < 2) return;
     g_sort_by = sort_by;
+    g_reverse = reverse;
     qsort(v->data, (size_t)v->len, sizeof(entry_t),
           dirs_first ? cmp_dirs_first : cmp_flat);
 }
@@ -408,13 +417,7 @@ void ext_table_add(ext_table_t *t, const char *filename) {
     t->len++;
 }
 
-static int ext_sort_cmp(const void *a, const void *b) {
-    const ext_entry_t *ea = (const ext_entry_t *)a;
-    const ext_entry_t *eb = (const ext_entry_t *)b;
-    if (ea->count != eb->count)
-        return eb->count - ea->count;  /* descending count */
-    return strcmp(ea->ext, eb->ext);   /* ascending alpha tie-breaker */
-}
+
 
 /*
  * ext_table_print -- sort and print the extension summary to stdout.
@@ -424,17 +427,17 @@ static int ext_sort_cmp(const void *a, const void *b) {
  *   .h            4
  *   (no ext)      1
  */
-void ext_table_print(const ext_table_t *t) {
-    if (t->len == 0) return;
-
-    ext_entry_t sorted[EXT_TABLE_MAX];
-    int n = t->len;
-    for (int i = 0; i < n; i++) sorted[i] = t->entries[i];
-    qsort(sorted, (size_t)n, sizeof(ext_entry_t), ext_sort_cmp);
-
-    printf("\nExtension summary:\n");
-    for (int i = 0; i < n; i++) {
-        const char *label = sorted[i].ext[0] ? sorted[i].ext : "(no ext)";
-        printf("  %-13s %d\n", label, sorted[i].count);
+void format_size(long long bytes, char *buf, size_t buf_size) {
+    if (bytes < 1024) {
+        snprintf(buf, buf_size, "%lld B", bytes);
+    } else if (bytes < 1024 * 1024) {
+        double kb = (double)bytes / 1024.0;
+        snprintf(buf, buf_size, "%.1f KB", kb);
+    } else if (bytes < 1024 * 1024 * 1024) {
+        double mb = (double)bytes / (1024.0 * 1024.0);
+        snprintf(buf, buf_size, "%.1f MB", mb);
+    } else {
+        double gb = (double)bytes / (1024.0 * 1024.0 * 1024.0);
+        snprintf(buf, buf_size, "%.1f GB", gb);
     }
 }

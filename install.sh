@@ -25,8 +25,8 @@ BINARY="neotree"
 INSTALL_DIR="/usr/local/bin"
 
 # Pin to a specific release. Users may override:
-#   VERSION=v0.3.1 curl -sSL ... | bash
-VERSION="${VERSION:-v0.3.1}"
+#   VERSION=v0.4.0 curl -sSL ... | bash
+VERSION="${VERSION:-v0.4.0}"
 
 # TMP_DIR is intentionally empty until mktemp runs so that cleanup()
 # is safe to call even if the script fails before mktemp.
@@ -128,9 +128,11 @@ info "Installing to ${INSTALL_DIR}/${BINARY}..."
 
 if [ -w "$INSTALL_DIR" ]; then
     mv "$TMP_DIR/$BINARY" "$INSTALL_DIR/$BINARY"
+    ln -sf "$BINARY" "$INSTALL_DIR/ntree"
 else
     warn "$INSTALL_DIR is not writable. Requesting sudo for install step only."
     sudo mv "$TMP_DIR/$BINARY" "$INSTALL_DIR/$BINARY"
+    sudo ln -sf "$BINARY" "$INSTALL_DIR/ntree"
 fi
 
 success "Installed to $INSTALL_DIR/$BINARY"

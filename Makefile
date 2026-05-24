@@ -21,7 +21,7 @@ PREFIX  ?= /usr/local
 # ---------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------
-SRCS    := main.c tree.c fs.c utils.c cli.c
+SRCS    := main.c tree.c fs.c utils.c cli.c find.c
 OBJS    := $(SRCS:.c=.o)
 BIN     := neotree
 

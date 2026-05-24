@@ -35,11 +35,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "cli.h"
 #include "tree.h"
 #include "utils.h"
 #include "fs.h"
+#include "find.h"
+
+#ifdef __GNUC__
+static void print_all(FILE *out, FILE *export_txt, FILE *export_md, const char *fmt, ...) __attribute__((format(printf, 4, 5)));
+#endif
+
+static void print_all(FILE *out, FILE *export_txt, FILE *export_md, const char *fmt, ...) {
+    char buf[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    if (out) fputs(buf, out);
+    if (export_txt) fputs(buf, export_txt);
+    if (export_md)  fputs(buf, export_md);
+}
+
+static int main_ext_sort_cmp(const void *a, const void *b) {
+    const ext_entry_t *ea = (const ext_entry_t *)a;
+    const ext_entry_t *eb = (const ext_entry_t *)b;
+    if (ea->count != eb->count)
+        return eb->count - ea->count;
+    return strcmp(ea->ext, eb->ext);
+}
 
 
 
@@ -51,12 +77,20 @@ int main(int argc, char *argv[]) {
     /* ---- color init (respects --no-color + isatty) ---- */
     color_init(opts.no_color);
 
-    /* ---- validate root ---- */
-    if (!fs_is_dir(opts.root)) {
-        fprintf(stderr, "neotree: '%s' is not a directory or does not exist\n",
-                opts.root);
+    /* ---- isolated find mode ---- */
+    if (opts.find || opts.find_dir) {
+        int exit_code = 0;
+        for (int r = 0; r < opts.roots_count; r++) {
+            const char *root = opts.roots[r];
+            if (!fs_is_dir(root)) {
+                fprintf(stderr, "neotree: '%s' is not a directory or does not exist\n", root);
+                exit_code = 1;
+                continue;
+            }
+            find_walk(root, "", &opts, 0);
+        }
         cli_opts_free(&opts);
-        return 1;
+        return exit_code;
     }
 
     /* ---- open export streams ---- */
@@ -86,76 +120,108 @@ int main(int argc, char *argv[]) {
         fprintf(export_md, "```\n");
     }
 
+    int exit_code = 0;
+    int printed_roots = 0;
 
+    for (int r = 0; r < opts.roots_count; r++) {
+        const char *root = opts.roots[r];
 
-    /* ---- ext-summary table ---- */
-    ext_table_t ext_tbl;
-    ext_table_t *ext_tbl_ptr = NULL;
-    if (opts.ext_summary) {
-        ext_table_init(&ext_tbl);
-        ext_tbl_ptr = &ext_tbl;
+        if (!fs_is_dir(root)) {
+            fprintf(stderr, "neotree: '%s' is not a directory or does not exist\n", root);
+            exit_code = 1;
+            continue;
+        }
+
+        if (printed_roots > 0) {
+            print_all(stdout, export_txt, export_md, "\n");
+        }
+        printed_roots++;
+
+        /* Merge .gitignore patterns from root directory */
+        cli_load_gitignore(&opts, root);
+
+        /* ---- ext-summary table ---- */
+        ext_table_t ext_tbl;
+        ext_table_t *ext_tbl_ptr = NULL;
+        if (opts.show_stats && !opts.dirs_only) {
+            ext_table_init(&ext_tbl);
+            ext_tbl_ptr = &ext_tbl;
+        }
+
+        /* ---- print root label ---- */
+        const char *rc = color_for_name(root, 1);
+        const char *rs = color_reset();
+        size_t root_len = strlen(root);
+        int needs_slash = (root_len > 0 &&
+                           root[root_len - 1] != '/' &&
+                           root[root_len - 1] != '\\');
+        printf("%s%s%s%s\n", rc, root, needs_slash ? "/" : "", rs);
+        if (export_txt) fprintf(export_txt, "%s%s\n", root, needs_slash ? "/" : "");
+        if (export_md)  fprintf(export_md,  "%s%s\n", root, needs_slash ? "/" : "");
+
+        /* ---- primary walk (stdout + optional txt export) ---- */
+        tree_stats_t stats = { 0, 0, 0, "", -1, 0 };
+        tree_walk(root, "", "", &opts, 0, &stats,
+                  stdout, export_txt, ext_tbl_ptr);
+
+        /* ---- markdown export pass ---- */
+        if (export_md) {
+            tree_stats_t stats2 = { 0, 0, 0, "", -1, 0 };
+            tree_walk(root, "", "", &opts, 0, &stats2,
+                      export_md, NULL, NULL);
+        }
+
+        /* ---- summary line ---- */
+        char summary[160];
+        int n;
+
+        if (opts.dirs_only) {
+            n = snprintf(summary, sizeof(summary),
+                         "\n%d director%s\n",
+                         stats.total_dirs,
+                         stats.total_dirs == 1 ? "y" : "ies");
+        } else {
+            n = snprintf(summary, sizeof(summary),
+                         "\n%d director%s, %d file%s\n",
+                         stats.total_dirs,  stats.total_dirs  == 1 ? "y" : "ies",
+                         stats.total_files, stats.total_files == 1 ? "" : "s");
+        }
+        (void)n;
+
+        fputs(summary, stdout);
+        if (export_txt) fputs(summary, export_txt);
+        if (export_md)  fputs(summary, export_md);
+
+        /* ---- stats summary ---- */
+        if (opts.show_stats) {
+            print_all(stdout, export_txt, export_md, "\nStats:\n");
+            if (opts.dirs_only) {
+                print_all(stdout, export_txt, export_md, "  %-17s%d\n", "directories", stats.total_dirs);
+                print_all(stdout, export_txt, export_md, "  %-17s%d\n", "max depth", stats.max_depth);
+            } else {
+                char size_buf[64];
+                format_size(stats.total_size_bytes, size_buf, sizeof(size_buf));
+
+                print_all(stdout, export_txt, export_md, "  %-17s%d\n", "directories", stats.total_dirs);
+                print_all(stdout, export_txt, export_md, "  %-17s%d\n", "files", stats.total_files);
+                print_all(stdout, export_txt, export_md, "  %-17s%s\n", "total size", size_buf);
+
+                if (ext_tbl_ptr && ext_tbl_ptr->len > 0) {
+                    print_all(stdout, export_txt, export_md, "\nExtensions:\n");
+                    ext_entry_t sorted[EXT_TABLE_MAX];
+                    int n_ext = ext_tbl_ptr->len;
+                    for (int i = 0; i < n_ext; i++) sorted[i] = ext_tbl_ptr->entries[i];
+                    qsort(sorted, (size_t)n_ext, sizeof(ext_entry_t), main_ext_sort_cmp);
+                    for (int i = 0; i < n_ext; i++) {
+                        const char *label = sorted[i].ext[0] ? sorted[i].ext : "(no ext)";
+                        print_all(stdout, export_txt, export_md, "  %-17s%d\n", label, sorted[i].count);
+                    }
+                }
+            }
+        }
+
+        cli_gitignore_free(&opts);
     }
-
-    /* ---- print root label ---- */
-    const char *rc = color_for_name(opts.root, 1);
-    const char *rs = color_reset();
-    size_t root_len = strlen(opts.root);
-    int needs_slash = (root_len > 0 &&
-                       opts.root[root_len - 1] != '/' &&
-                       opts.root[root_len - 1] != '\\');
-    printf("%s%s%s%s\n", rc, opts.root, needs_slash ? "/" : "", rs);
-    if (export_txt) fprintf(export_txt, "%s%s\n", opts.root, needs_slash ? "/" : "");
-    if (export_md)  fprintf(export_md,  "%s%s\n", opts.root, needs_slash ? "/" : "");
-
-    /* ---- primary walk (stdout + optional txt export) ---- */
-    tree_stats_t stats = { 0, 0 };
-    tree_walk(opts.root, "", "", &opts, 0, &stats,
-              stdout, export_txt, ext_tbl_ptr);
-
-    /*
-     * ---- markdown export pass ----
-     *
-     * tree_walk accepts one export stream at a time.  If markdown is
-     * requested, do a second pass writing to export_md as the primary
-     * stream (ANSI codes are disabled because color_init reflects the
-     * original TTY state; export_md is not a TTY, so color_enabled()
-     * is already 0 when piped, but we pass NULL for export_out to
-     * keep the logic clean).
-     */
-    if (export_md) {
-        tree_stats_t stats2 = { 0, 0 };
-        tree_walk(opts.root, "", "", &opts, 0, &stats2,
-                  export_md, NULL, NULL);
-    }
-
-    /* ---- summary line ---- */
-    char summary[160];
-    int n;
-
-    if (opts.dirs_only) {
-        /*
-         * Issue 2: suppress file count when --dirs-only is active.
-         * Files are counted internally but intentionally not shown.
-         */
-        n = snprintf(summary, sizeof(summary),
-                     "\n%d director%s\n",
-                     stats.total_dirs,
-                     stats.total_dirs == 1 ? "y" : "ies");
-    } else {
-        n = snprintf(summary, sizeof(summary),
-                     "\n%d director%s, %d file%s\n",
-                     stats.total_dirs,  stats.total_dirs  == 1 ? "y" : "ies",
-                     stats.total_files, stats.total_files == 1 ? "" : "s");
-    }
-    (void)n;
-
-    fputs(summary, stdout);
-    if (export_txt) fputs(summary, export_txt);
-    if (export_md)  fputs(summary, export_md);
-
-    /* ---- ext summary (stdout only) ---- */
-    if (opts.ext_summary && ext_tbl_ptr)
-        ext_table_print(ext_tbl_ptr);
 
     /* ---- finalise exports ---- */
     if (export_md) {
@@ -169,5 +235,5 @@ int main(int argc, char *argv[]) {
     /* ---- release heap memory owned by opts ---- */
     cli_opts_free(&opts);
 
-    return 0;
+    return exit_code;
 }

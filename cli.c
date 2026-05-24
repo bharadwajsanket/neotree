@@ -43,6 +43,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const char *g_prog_name = "neotree";
+
 /* ------------------------------------------------------------------ */
 /*  Default ignore list                                                 */
 /* ------------------------------------------------------------------ */
@@ -78,16 +80,16 @@ static const char *DEFAULT_IGNORE[] = {
  *     recorded via opts->gitignore_start so cli_opts_free() can free
  *     them precisely.
  */
-static void cli_load_gitignore(cli_opts_t *opts) {
-    /* Build path: root + "/.gitignore" */
+void cli_load_gitignore(cli_opts_t *opts, const char *root_path) {
+    /* Build path: root_path + "/.gitignore" */
     char gi_path[4096];
-    size_t rlen = strlen(opts->root);
+    size_t rlen = strlen(root_path);
     /* sizeof("/.gitignore") includes the NUL, so this checks for overflow */
     if (rlen + sizeof("/.gitignore") >= sizeof(gi_path))
         return;
 
-    memcpy(gi_path, opts->root, rlen);
-    if (rlen == 0 || (opts->root[rlen - 1] != '/' && opts->root[rlen - 1] != '\\'))
+    memcpy(gi_path, root_path, rlen);
+    if (rlen == 0 || (root_path[rlen - 1] != '/' && root_path[rlen - 1] != '\\'))
         gi_path[rlen++] = '/';
     memcpy(gi_path + rlen, ".gitignore", sizeof(".gitignore")); /* includes NUL */
 
@@ -164,10 +166,10 @@ static void cli_load_gitignore(cli_opts_t *opts) {
 
 static void die_usage(const char *msg, const char *arg) {
     if (arg)
-        fprintf(stderr, "neotree: %s: '%s'\n", msg, arg);
+        fprintf(stderr, "%s: %s: '%s'\n", g_prog_name, msg, arg);
     else
-        fprintf(stderr, "neotree: %s\n", msg);
-    fprintf(stderr, "Try 'neotree --help' for usage.\n");
+        fprintf(stderr, "%s: %s\n", g_prog_name, msg);
+    fprintf(stderr, "Try '%s --help' for usage.\n", g_prog_name);
     exit(1);
 }
 
@@ -177,24 +179,24 @@ static void die_usage(const char *msg, const char *arg) {
 
 void cli_usage(void) {
     printf(
-        "Usage: neotree [OPTIONS] [PATH]\n"
+        "Usage: %s [OPTIONS] [PATH...]\n"
         "\n"
-        "Display a directory tree.\n"
-        "\n"
-        "Arguments:\n"
-        "  PATH                  Root directory to display (default: .)\n"
+        "Display a directory tree or find paths.\n"
         "\n"
         "Options:\n"
         "  -L <depth>            Limit display depth (1 = root entries only)\n"
-        "  --ignore <name>       Ignore entries by name (repeatable)\n"
-        "  --pattern <glob>      Show only files matching glob (e.g. *.c or **/*.h)\n"
+        "  --ignore <patterns>   Ignore entries by name (comma-separated or repeatable)\n"
+        "  --pattern <glob>      Filter files matching glob (e.g. *.c or **/*.h)\n"
         "  --all                 Show hidden files (dot-entries)\n"
-        "  --dirs-only           Show directories only; summary omits file count\n"
+        "  --dirs-only           Show directories only\n"
         "  --size                Show file sizes in KB\n"
         "  --sort <key>          Sort entries: name (default), size, modified\n"
-        "  --ext-summary         Print extension counts after the tree\n"
-        "  --export-txt <file>   Write plain-text tree to file (no ANSI codes)\n"
-        "  --export-markdown <file>  Write markdown (fenced) tree to file\n"
+        "  --reverse             Reverse the active sort mode (requires --sort)\n"
+        "  --stats               Print traversal statistics and extension breakdown\n"
+        "  --find <query>        Find files by name/glob/path (comma-separated)\n"
+        "  --find-dir <query>    Find directories by name/glob/path (comma-separated)\n"
+        "  --export-txt <file>   Write plain-text tree to file\n"
+        "  --export-markdown <file>  Write markdown tree to file\n"
         "  --no-color            Disable ANSI color output\n"
         "  --no-dirs-first       Disable directory-first ordering\n"
         "  -h, --help            Show this help and exit\n"
@@ -217,28 +219,34 @@ void cli_usage(void) {
         "  Markdown export wraps the tree in a fenced code block.\n"
         "\n"
         "Examples:\n"
-        "  neotree\n"
-        "  neotree src/\n"
-        "  neotree --all\n"
-        "  neotree --dirs-only\n"
-        "  neotree --size\n"
-        "  neotree -L 2 .\n"
-        "  neotree --pattern '*.c' src/\n"
-        "  neotree --pattern '**/*.h'\n"
-        "  neotree --pattern 'src/**/*.h' .\n"
-        "  neotree --sort size\n"
-        "  neotree --ext-summary\n"
-        "  neotree --export-txt tree.txt\n"
-        "  neotree --export-markdown tree.md\n"
-        "  neotree --ignore dist --ignore .cache .\n"
-        "  neotree --no-color | tee tree.txt\n"
+        "  %s\n"
+        "  %s --all --stats\n"
+        "  %s --sort size --reverse\n"
+        "  %s --find '*.c,src/**/*.h'\n"
+        "  %s --ignore 'dist,tmp'\n",
+        g_prog_name, g_prog_name, g_prog_name, g_prog_name, g_prog_name, g_prog_name
     );
     exit(0);
 }
 
 void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
+    /* --- argv[0] detection for alias support --- */
+    if (argc > 0 && argv[0]) {
+        const char *base = utils_basename(argv[0]);
+        static char detected_name[128];
+        strncpy(detected_name, base, sizeof(detected_name) - 1);
+        detected_name[sizeof(detected_name) - 1] = '\0';
+        char *dot = strrchr(detected_name, '.');
+        if (dot && (strcmp(dot, ".exe") == 0 || strcmp(dot, ".EXE") == 0)) {
+            *dot = '\0';
+        }
+        if (strcmp(detected_name, "ntree") == 0 || strcmp(detected_name, "neotree") == 0) {
+            g_prog_name = detected_name;
+        }
+    }
+
     /* --- defaults --- */
-    opts->root           = ".";
+    opts->roots_count    = 0;
     opts->max_depth      = -1;
     opts->pattern        = NULL;
     opts->no_color       = 0;
@@ -247,7 +255,11 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
     opts->dirs_only      = 0;
     opts->show_size      = 0;
     opts->sort_by        = SORT_NAME;
-    opts->ext_summary    = 0;
+    opts->show_stats     = 0;
+    opts->reverse        = 0;
+    opts->sort_explicit  = 0;
+    opts->find           = NULL;
+    opts->find_dir       = NULL;
     opts->export_txt     = NULL;
     opts->export_md      = NULL;
     opts->ignore_count   = 0;
@@ -265,7 +277,11 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
         const char *arg = argv[i];
 
         if (end_of_flags || arg[0] != '-') {
-            opts->root = arg;
+            if (opts->roots_count < CLI_MAX_ROOTS) {
+                opts->roots[opts->roots_count++] = arg;
+            } else {
+                die_usage("too many root paths (max 64)", NULL);
+            }
             continue;
         }
 
@@ -275,7 +291,7 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
             cli_usage();
 
         if (strcmp(arg, "--version") == 0) {
-            printf("%s %s\n", CLI_PROGRAM, CLI_VERSION);
+            printf("%s %s\n", g_prog_name, CLI_VERSION);
             exit(0);
         }
 
@@ -291,10 +307,23 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
 
         if (strcmp(arg, "--ignore") == 0) {
             if (i + 1 >= argc) die_usage("--ignore requires an argument", NULL);
-            if (opts->ignore_count >= CLI_MAX_IGNORE)
-                die_usage("too many --ignore entries (max 64)", NULL);
-            /* argv pointer — not heap-allocated, must not be freed */
-            opts->ignore[opts->ignore_count++] = argv[++i];
+            char *arg_val = argv[++i];
+            char *tok = arg_val;
+            while (tok) {
+                char *comma = strchr(tok, ',');
+                if (comma) {
+                    *comma = '\0';
+                }
+                if (opts->ignore_count >= CLI_MAX_IGNORE) {
+                    die_usage("too many --ignore entries (max 64)", NULL);
+                }
+                opts->ignore[opts->ignore_count++] = tok;
+                if (comma) {
+                    tok = comma + 1;
+                } else {
+                    break;
+                }
+            }
             continue;
         }
 
@@ -315,11 +344,25 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
         if (strcmp(arg, "--size") == 0)      { opts->show_size = 1; continue; }
         if (strcmp(arg, "--no-color") == 0)  { opts->no_color  = 1; continue; }
         if (strcmp(arg, "--no-dirs-first") == 0) { opts->dirs_first = 0; continue; }
-        if (strcmp(arg, "--ext-summary") == 0)   { opts->ext_summary = 1; continue; }
+        if (strcmp(arg, "--stats") == 0)         { opts->show_stats = 1; continue; }
+        if (strcmp(arg, "--reverse") == 0)       { opts->reverse = 1; continue; }
+
+        if (strcmp(arg, "--find") == 0) {
+            if (i + 1 >= argc) die_usage("--find requires an argument", NULL);
+            opts->find = argv[++i];
+            continue;
+        }
+
+        if (strcmp(arg, "--find-dir") == 0) {
+            if (i + 1 >= argc) die_usage("--find-dir requires an argument", NULL);
+            opts->find_dir = argv[++i];
+            continue;
+        }
 
         if (strcmp(arg, "--sort") == 0) {
             if (i + 1 >= argc) die_usage("--sort requires an argument", NULL);
             const char *key = argv[++i];
+            opts->sort_explicit = 1;
             if (strcmp(key, "name") == 0)         opts->sort_by = SORT_NAME;
             else if (strcmp(key, "size") == 0)    opts->sort_by = SORT_SIZE;
             else if (strcmp(key, "modified") == 0) opts->sort_by = SORT_MODIFIED;
@@ -342,6 +385,10 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
         die_usage("unknown option", arg);
     }
 
+    if (opts->reverse && !opts->sort_explicit) {
+        die_usage("--reverse requires --sort", NULL);
+    }
+
     /*
      * Append the basenames of active export targets to the ignore list.
      * Since these point to argv paths, they are not heap-allocated,
@@ -362,20 +409,19 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
      */
     opts->gitignore_start = opts->ignore_count;
 
-    /* Merge .gitignore patterns from root directory */
-    cli_load_gitignore(opts);
+    if (opts->roots_count == 0) {
+        opts->roots[opts->roots_count++] = ".";
+    }
 }
 
-void cli_opts_free(cli_opts_t *opts) {
-    /*
-     * Free only the heap-allocated .gitignore entries.
-     * Entries [0, gitignore_start) are either static string literals
-     * (DEFAULT_IGNORE) or argv pointers — both must NOT be freed.
-     */
+void cli_gitignore_free(cli_opts_t *opts) {
     for (int i = opts->gitignore_start; i < opts->ignore_count; i++) {
         free((char *)opts->ignore[i]);
         opts->ignore[i] = NULL;
     }
-    opts->ignore_count    = opts->gitignore_start;
-    opts->gitignore_start = 0;
+    opts->ignore_count = opts->gitignore_start;
+}
+
+void cli_opts_free(cli_opts_t *opts) {
+    cli_gitignore_free(opts);
 }

@@ -23,7 +23,7 @@ $ErrorActionPreference = 'Stop'
 
 $RepoOwner  = "bharadwajsanket"
 $RepoName   = "neotree"
-$Version    = if ($env:VERSION) { $env:VERSION } else { "v0.3.1" }
+$Version    = if ($env:VERSION) { $env:VERSION } else { "v0.4.0" }
 $Asset      = "neotree-windows.exe"
 $BinaryName = "neotree.exe"
 $InstallDir = Join-Path $env:LOCALAPPDATA "Programs\neotree"
@@ -94,6 +94,13 @@ if (Test-Path $BinaryPath) {
 
 Move-Item -Path $TmpFile -Destination $BinaryPath
 Write-Success "Installed to $BinaryPath"
+
+$AliasPath = Join-Path $InstallDir "ntree.exe"
+if (Test-Path $AliasPath) {
+    Remove-Item $AliasPath -Force
+}
+Copy-Item -Path $BinaryPath -Destination $AliasPath
+Write-Success "Created alias at $AliasPath"
 
 # ------------------------------------------------------------------ #
 #  4. Add install directory to user PATH                               #

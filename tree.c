@@ -53,13 +53,13 @@
 #ifdef _WIN32
 #  include <windows.h>
 
-static long get_file_size_kb(const char *path) {
+static long long get_file_size_bytes(const char *path) {
     WIN32_FILE_ATTRIBUTE_DATA info;
     if (!GetFileAttributesExA(path, GetFileExInfoStandard, &info))
         return -1;
     long long bytes = ((long long)info.nFileSizeHigh << 32) |
                       (unsigned long)info.nFileSizeLow;
-    return (long)((bytes + 512) / 1024);
+    return bytes;
 }
 
 static long get_mtime(const char *path) {
@@ -80,10 +80,10 @@ static int is_executable(const char *path) {
 #else  /* POSIX */
 #  include <sys/stat.h>
 
-static long get_file_size_kb(const char *path) {
+static long long get_file_size_bytes(const char *path) {
     struct stat st;
     if (stat(path, &st) != 0) return -1;
-    return (long)((st.st_size + 512) / 1024);
+    return (long long)st.st_size;
 }
 
 static long get_mtime(const char *path) {
@@ -316,12 +316,13 @@ void tree_walk(const char       *path,
         if (!entry_is_visible(e.name, e.is_hidden, is_dir, rel_prefix, opts))
             continue;
 
-        long sz = -1, mt = 0;
+        long long sz = -1;
+        long mt = 0;
         if (!is_dir) {
             char child_path[MAX_PATH];
             fs_join(child_path, sizeof(child_path), path, e.name);
-            if (opts->sort_by == SORT_SIZE || opts->show_size)
-                sz = get_file_size_kb(child_path);
+            if (opts->sort_by == SORT_SIZE || opts->show_size || (opts->show_stats && !opts->dirs_only))
+                sz = get_file_size_bytes(child_path);
             if (opts->sort_by == SORT_MODIFIED)
                 mt = get_mtime(child_path);
         }
@@ -334,7 +335,7 @@ void tree_walk(const char       *path,
     fs_closedir(dir);
 
     /* ---- 2. Sort ---- */
-    entry_vec_sort(&vec, opts->dirs_first, opts->sort_by);
+    entry_vec_sort(&vec, opts->dirs_first, opts->sort_by, opts->reverse);
 
     /* ---- 3. Last rendered index ---- */
     int last_idx = last_rendered_idx(&vec, opts->dirs_only);
@@ -348,6 +349,10 @@ void tree_walk(const char       *path,
 
         if (ent->is_dir) {
             stats->total_dirs++;
+
+            if (current_depth + 1 > stats->max_depth) {
+                stats->max_depth = current_depth + 1;
+            }
 
             int is_last = (i == last_idx);
 
@@ -383,11 +388,31 @@ void tree_walk(const char       *path,
             if (!opts->dirs_only) {
                 int is_last = (i == last_idx);
 
+                long long size_bytes = -1;
+                if (opts->show_size || opts->show_stats) {
+                    size_bytes = ent->size_bytes >= 0
+                              ? ent->size_bytes
+                              : get_file_size_bytes(child_path);
+                }
+
+                if (opts->show_stats) {
+                    if (size_bytes >= 0) {
+                        stats->total_size_bytes += size_bytes;
+                        if (size_bytes > stats->largest_file_size_bytes) {
+                            stats->largest_file_size_bytes = size_bytes;
+                            strncpy(stats->largest_file, ent->name, sizeof(stats->largest_file) - 1);
+                            stats->largest_file[sizeof(stats->largest_file) - 1] = '\0';
+                        }
+                    }
+                }
+
+                if (current_depth + 1 > stats->max_depth) {
+                    stats->max_depth = current_depth + 1;
+                }
+
                 long size_kb = -1;
-                if (opts->show_size) {
-                    size_kb = ent->size_kb >= 0
-                              ? ent->size_kb
-                              : get_file_size_kb(child_path);
+                if (opts->show_size && size_bytes >= 0) {
+                    size_kb = (long)((size_bytes + 512) / 1024);
                 }
 
                 render_entry(tree_prefix, is_last, ent->name, child_path,
