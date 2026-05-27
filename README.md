@@ -2,24 +2,17 @@
 
 # neotree
 
-**A fast, minimal, developer-focused directory tree CLI — written in C.**
+**A fast, zero-dependency tree(1) utility for developers.**
 
 [![Version](https://img.shields.io/badge/version-v0.4.0-6C63FF?style=flat-square)](https://github.com/bharadwajsanket/neotree/releases)
 [![Language](https://img.shields.io/badge/language-C99-00ADD8?style=flat-square&logo=c)](https://en.wikipedia.org/wiki/C99)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-blue?style=flat-square)](./LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=flat-square)](#platform-support)
-
-<br/>
-
-> Built for developers who need **focused directory exploration** — not just a static tree dump.
-> Fast. Lightweight. No dependencies. UNIX-native.
-
-<br/>
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=flat-square)](#installation)
 
 </div>
 
 ```
-$ ntree --pattern 'src/**/*.c' --size --sort size .
+$ neotree --pattern 'src/**/*.c' --size --sort size .
 
 .
 └── src/
@@ -33,40 +26,56 @@ $ ntree --pattern 'src/**/*.c' --size --sort size .
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Description |
 |---|---|
-| 🎨 **Filetype colors** | Syntax-aware ANSI coloring by extension — `.c`, `.py`, `.md`, images, scripts |
-| 🔍 **Glob filtering** | `*.c`, `**/*.h`, `src/**/*.h` — path-aware recursive matching |
-| 🗂️ **Sorting** | Sort by `name`, `size`, or `modified` — within directory-first groups |
-| 🔄 **Reverse sort** | Flip sorting direction with `--reverse` |
-| 📊 **Traversal stats** | Summary of directories, files, total size, and extensions with `--stats` |
-| 🔎 **Find mode** | Fast, isolated path lookups for files (`--find`) or directories (`--find-dir`) |
-| 📄 **Export** | Write clean plain-text or fenced markdown tree to a file |
-| 🙈 **Ignore rules** | `--ignore`, `.gitignore` auto-loading, built-in defaults, comma-separated lists |
-| 📁 **Dirs only** | `--dirs-only` shows just the structure, no file noise |
-| 📏 **Depth limit** | `-L <n>` stops recursion at any level |
-| ⚡ **ntree alias** | Runs identically under `neotree` or `ntree` |
-| 🔧 **Zero dependencies** | Pure C99, no libraries, no runtime, no config |
+| **Filetype colors** | Syntax-aware ANSI coloring by extension — `.c`, `.py`, `.md`, images, scripts |
+| **Glob filtering** | `*.c`, `**/*.h`, `src/**/*.h` — path-aware recursive matching |
+| **Sorting** | Sort by `name`, `size`, or `modified` — within directory-first groups |
+| **Reverse sort** | Flip sorting direction with `--reverse` |
+| **Traversal stats** | Summary of directories, files, total size, and extensions with `--stats` |
+| **Find mode** | Fast, isolated path lookups for files (`--find`) or directories (`--find-dir`) |
+| **Export** | Write clean plain-text or fenced markdown tree to a file |
+| **Ignore rules** | `--ignore`, `.gitignore` auto-loading, built-in defaults, comma-separated lists |
+| **Dirs only** | `--dirs-only` shows just the structure, no file noise |
+| **Depth limit** | `-L <n>` stops recursion at any level |
+| **ntree alias** | Runs identically under `neotree` or `ntree` |
+| **Zero dependencies** | Pure C99, no libraries, no runtime, no config |
 
 ---
 
-## 📦 Installation
+## Philosophy
+
+`neotree` is designed to be a focused utility that sits comfortably in a standard UNIX pipeline.
+
+It explicitly focuses on:
+- Fast, low-overhead directory traversal.
+- Composable command-line options.
+- Developer-oriented filtering (such as automatic `.gitignore` parsing).
+- Human-readable, structured outputs (with optional markdown/txt exports).
+- Minimal footprint (pure C99, zero dependencies).
+
+It intentionally avoids:
+- Interactive TUI or ncurses-based interfaces.
+- Fuzzy searching or matching.
+- Complex configuration files or plugin systems.
+
+---
+
+## Installation
 
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap bharadwajsanket/neotree
-brew install neotree
+brew tap bharadwajsanket/neotree && brew install neotree
 ```
 
 <details>
 <summary>Uninstallation</summary>
 
 ```bash
-brew uninstall neotree
-brew untap bharadwajsanket/neotree
+brew uninstall neotree && brew untap bharadwajsanket/neotree
 ```
 
 </details>
@@ -90,7 +99,7 @@ VERSION=v0.4.0 bash <(curl -sSL https://raw.githubusercontent.com/bharadwajsanke
 <summary>Uninstallation</summary>
 
 ```bash
-sudo rm -f /usr/local/bin/neotree /usr/local/bin/ntree
+sudo rm -f /usr/local/bin/neotree /usr/local/bin/ntree /usr/local/share/man/man1/neotree.1 /usr/local/share/man/man1/ntree.1
 ```
 
 </details>
@@ -123,10 +132,7 @@ Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\neotree"
 ### Build from Source
 
 ```bash
-git clone https://github.com/bharadwajsanket/neotree
-cd neotree
-make
-sudo make install
+git clone https://github.com/bharadwajsanket/neotree && cd neotree && make && sudo make install
 ```
 
 <details>
@@ -140,31 +146,31 @@ sudo make uninstall
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-ntree                            # tree of current directory
-ntree src/                       # tree of specific path
-ntree src tests docs             # tree of multiple paths
-ntree --all                      # include hidden dot-files
-ntree --dirs-only                # structure only, no files
-ntree --size                     # show file sizes in KB
-ntree -L 2                       # limit to 2 levels deep
-ntree --sort size --reverse      # sort by size descending
-ntree --stats                    # show traversal statistics
-ntree --find '*.c,src/**/*.h'    # search for files by pattern
-ntree --find-dir 'test'          # search for directories
-ntree --ignore 'dist,tmp,.cache' # ignore multiple patterns
-ntree --export-txt tree.txt      # save as plain text
-ntree --export-markdown tree.md  # save as markdown
+neotree                            # tree of current directory
+neotree src/                       # tree of specific path
+neotree src tests docs             # tree of multiple paths
+neotree --all                      # include hidden dot-files
+neotree --dirs-only                # structure only, no files
+neotree --size                     # show file sizes in KB
+neotree -L 2                       # limit to 2 levels deep
+neotree --sort size --reverse      # sort by size descending
+neotree --stats                    # show traversal statistics
+neotree --find '*.c,src/**/*.h'    # search for files by pattern
+neotree --find-dir 'test'          # search for directories
+neotree --ignore 'dist,tmp,.cache' # ignore multiple patterns
+neotree --export-txt tree.txt      # save as plain text
+neotree --export-markdown tree.md  # save as markdown
 ```
 
 ---
 
-## 📖 Usage
+## Usage
 
 ```
-ntree [OPTIONS] [PATH...]
+neotree [OPTIONS] [PATH...]
 ```
 
 ### Options
@@ -203,55 +209,55 @@ Manual pages are installed automatically via Homebrew, install.sh, and make inst
 
 ---
 
-## 🔍 Glob Patterns
+## Glob Patterns
 
 neotree supports glob matching via `--pattern`, `--find`, and `--find-dir`:
 
 ### Simple patterns (filename only)
 
 ```bash
-ntree --pattern "*.c"      # .c files in current directory only
-ntree --pattern "Makefile" # exact name match
+neotree --pattern "*.c"      # .c files in current directory only
+neotree --pattern "Makefile" # exact name match
 ```
 
 ### Recursive patterns (`**`)
 
 ```bash
-ntree --pattern "**/*.c"        # all .c files at any depth
-ntree --pattern "**/*.h"        # all .h files at any depth
-ntree --pattern "src/**/*.h"    # .h files only under src/
-ntree --pattern "lib/**/test.c" # test.c anywhere under lib/
+neotree --pattern "**/*.c"        # all .c files at any depth
+neotree --pattern "**/*.h"        # all .h files at any depth
+neotree --pattern "src/**/*.h"    # .h files only under src/
+neotree --pattern "lib/**/test.c" # test.c anywhere under lib/
 ```
 
 ---
 
-## 🗂️ Sorting & Reversing
+## Sorting & Reversing
 
 Sort entries within their groups (directories-first by default):
 
 ```bash
-ntree --sort name      # A → Z alphabetical (default)
-ntree --sort size      # smallest files first
-ntree --sort modified  # oldest files first
+neotree --sort name      # A → Z alphabetical (default)
+neotree --sort size      # smallest files first
+neotree --sort modified  # oldest files first
 ```
 
 Combine with `--reverse` to invert the order:
 
 ```bash
-ntree --sort size --reverse     # largest files first
-ntree --sort modified --reverse # most recently modified first
+neotree --sort size --reverse     # largest files first
+neotree --sort modified --reverse # most recently modified first
 ```
 
 > **Note:** `--reverse` is invalid without `--sort` and will show an error.
 
 ---
 
-## 📊 Traversal Statistics
+## Traversal Statistics
 
 Using `--stats` displays traversal totals and an extension breakdown after the tree:
 
 ```bash
-ntree --stats .
+neotree --stats .
 ```
 
 ```
@@ -283,16 +289,16 @@ Stats:
 
 ---
 
-## 🔎 Find Mode
+## Find Mode
 
 Find mode is an isolated path lookup tool (`--find` or `--find-dir`). It does not render the tree, sort, ignore entries, or count statistics. It simply outputs matching paths on newlines:
 
 ```bash
-ntree --find 'tree.c'
+neotree --find 'tree.c'
 ./src/tree.c
 ./lib/tree.c
 
-ntree --find-dir 'src,test'
+neotree --find-dir 'src,test'
 ./src
 ./test
 ```
@@ -300,13 +306,13 @@ ntree --find-dir 'src,test'
 Anchor searches to the root using a leading `/`:
 
 ```bash
-ntree --find '/*.c'    # .c files in the root directory only
+neotree --find '/*.c'    # .c files in the root directory only
 ./main.c
 ```
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 neotree/
@@ -320,7 +326,7 @@ neotree/
 
 ---
 
-## 📜 License
+## License
 
 This project is licensed under the GNU GPL v3.0 License.
 
