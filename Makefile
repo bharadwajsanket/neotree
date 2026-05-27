@@ -63,11 +63,18 @@ debug: $(BIN)
 install: $(BIN)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 755 $(BIN) $(DESTDIR)$(PREFIX)/bin/$(BIN)
+	ln -sf $(BIN) $(DESTDIR)$(PREFIX)/bin/ntree
+	install -d $(DESTDIR)$(PREFIX)/share/man/man1
+	install -m 644 man/neotree.1 $(DESTDIR)$(PREFIX)/share/man/man1/neotree.1
+	ln -sf neotree.1 $(DESTDIR)$(PREFIX)/share/man/man1/ntree.1
 	@echo "Installed to $(PREFIX)/bin/$(BIN)"
 
 .PHONY: uninstall
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/$(BIN)
+	rm -f $(DESTDIR)$(PREFIX)/bin/ntree
+	rm -f $(DESTDIR)$(PREFIX)/share/man/man1/neotree.1
+	rm -f $(DESTDIR)$(PREFIX)/share/man/man1/ntree.1
 	@echo "Uninstalled $(BIN)"
 
 # ---------------------------------------------------------------

@@ -23,6 +23,7 @@ REPO_OWNER="bharadwajsanket"
 REPO_NAME="neotree"
 BINARY="neotree"
 INSTALL_DIR="/usr/local/bin"
+MAN_INSTALL_DIR="/usr/local/share/man/man1"
 
 # Pin to a specific release. Users may override:
 #   VERSION=v0.4.0 curl -sSL ... | bash
@@ -100,6 +101,7 @@ fi
 TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t neotree)"
 
 DOWNLOAD_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${VERSION}/${ASSET}"
+MAN_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${VERSION}/man/neotree.1"
 
 info "Downloading ${ASSET} ${VERSION}..."
 
@@ -111,6 +113,11 @@ if ! curl -fL "$DOWNLOAD_URL" -o "$TMP_DIR/$BINARY"; then
 fi
 
 success "Downloaded $ASSET"
+
+info "Downloading manpage..."
+if ! curl -fL "$MAN_URL" -o "$TMP_DIR/neotree.1"; then
+    warn "Could not download manpage from $MAN_URL. Skipping manpage installation."
+fi
 
 # ------------------------------------------------------------------ #
 #  4. Install                                                          #
@@ -137,6 +144,21 @@ fi
 
 success "Installed to $INSTALL_DIR/$BINARY"
 
+if [ -f "$TMP_DIR/neotree.1" ]; then
+    info "Installing manpage to ${MAN_INSTALL_DIR}/..."
+    if [ -w "$MAN_INSTALL_DIR" ] || [ -w "$(dirname "$MAN_INSTALL_DIR")" ]; then
+        mkdir -p "$MAN_INSTALL_DIR"
+        cp "$TMP_DIR/neotree.1" "$MAN_INSTALL_DIR/neotree.1"
+        ln -sf neotree.1 "$MAN_INSTALL_DIR/ntree.1"
+    else
+        warn "$MAN_INSTALL_DIR is not writable. Requesting sudo for manpage install."
+        sudo mkdir -p "$MAN_INSTALL_DIR"
+        sudo cp "$TMP_DIR/neotree.1" "$MAN_INSTALL_DIR/neotree.1"
+        sudo ln -sf neotree.1 "$MAN_INSTALL_DIR/ntree.1"
+    fi
+    success "Installed manpage to $MAN_INSTALL_DIR/neotree.1"
+fi
+
 # ------------------------------------------------------------------ #
 #  5. Verify                                                           #
 # ------------------------------------------------------------------ #
@@ -157,4 +179,5 @@ printf "  neotree --size\n"
 printf "  neotree -L 2 .\n"
 printf "  neotree --pattern '*.c' src/\n"
 printf "\n${BLD}To uninstall:${RST}\n"
-printf "  sudo rm %s/%s\n\n" "$INSTALL_DIR" "$BINARY"
+printf "  sudo rm -f %s/%s %s/ntree\n" "$INSTALL_DIR" "$BINARY" "$INSTALL_DIR"
+printf "  sudo rm -f %s/neotree.1 %s/ntree.1\n\n" "$MAN_INSTALL_DIR" "$MAN_INSTALL_DIR"

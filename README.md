@@ -190,6 +190,17 @@ ntree [OPTIONS] [PATH...]
 | `-h`, `--help` | — | Show help and exit |
 | `--version` | — | Show version and exit |
 
+### Manual Pages
+
+Full offline documentation is available via manual pages:
+
+```bash
+man neotree
+man ntree
+```
+
+Manual pages are installed automatically via Homebrew, install.sh, and make install.
+
 ---
 
 ## 🔍 Glob Patterns
