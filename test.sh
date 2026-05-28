@@ -3,7 +3,14 @@
 # neotree / ntree Full Edge-Test Suite
 # ============================================
 
-set -e
+set -euo pipefail
+
+# Cleanup all test artifacts on exit (success or failure)
+cleanup() {
+    rm -rf test_find_sandbox test_multi_1 test_multi_2 test_link test_unicode
+    rm -f tree.txt tree.md both.txt both.md out.txt ntree
+}
+trap cleanup EXIT
 
 echo "============================================"
 echo "BUILD"
@@ -101,8 +108,8 @@ echo "FIND MODE (--find and --find-dir)"
 echo "============================================"
 
 mkdir -p test_find_sandbox/dir1/dir2
-dd if=/dev/zero of=test_find_sandbox/dir1/file1.c bs=1024 count=1 2>/dev/null
-dd if=/dev/zero of=test_find_sandbox/dir1/dir2/file2.h bs=1024 count=1 2>/dev/null
+printf '\0%.0s' {1..1024} > test_find_sandbox/dir1/file1.c
+printf '\0%.0s' {1..1024} > test_find_sandbox/dir1/dir2/file2.h
 touch test_find_sandbox/dir1/dir2/file3.txt
 
 echo "--- Find exact name ---"
@@ -118,14 +125,30 @@ echo "--- Find comma-separated ---"
 echo "--- Find directories ---"
 ./ntree --find-dir 'dir1,dir2' test_find_sandbox
 
-rm -rf test_find_sandbox
+echo ""
+echo "============================================"
+echo "FIND MODE — IGNORE LIST RESPECTED"
+echo "============================================"
+
+# Verify that --find does not descend into ignored directories.
+# Create a node_modules directory with a matching file.
+mkdir -p test_find_sandbox/node_modules
+touch test_find_sandbox/node_modules/file1.c
+
+echo "--- Find *.c (node_modules must be excluded) ---"
+FOUND=$(./ntree --find '*.c' test_find_sandbox)
+if echo "$FOUND" | grep -q 'node_modules'; then
+    echo "FAIL: --find descended into node_modules"
+    exit 1
+fi
+echo "OK: node_modules correctly excluded from --find"
+
+rm -rf test_find_sandbox/node_modules
 
 echo ""
 echo "============================================"
 echo "EXPORT TXT & MARKDOWN"
 echo "============================================"
-
-rm -f tree.txt tree.md both.txt both.md
 
 ./ntree --export-txt tree.txt
 echo "--- tree.txt ---"
@@ -141,8 +164,6 @@ head -15 both.txt
 echo "--- both.md ---"
 head -15 both.md
 
-rm -f tree.txt tree.md both.txt both.md
-
 echo ""
 echo "============================================"
 echo "PIPE SAFETY"
@@ -150,7 +171,6 @@ echo "============================================"
 
 ./ntree | cat
 ./ntree --size | tee out.txt
-rm -f out.txt
 
 echo ""
 echo "============================================"
@@ -168,7 +188,6 @@ echo "============================================"
 echo "MULTI-ROOT DIRECTORY SUPPORT"
 echo "============================================"
 
-# Prepare test directories
 mkdir -p test_multi_1 test_multi_2
 touch test_multi_1/fileA.c test_multi_1/fileB.h
 touch test_multi_2/fileC.py test_multi_2/fileD.txt
@@ -180,7 +199,6 @@ echo "--- Multiple roots with stats ---"
 ./ntree test_multi_1 test_multi_2 --stats
 
 echo "--- Multiple roots with export-txt ---"
-rm -f multi_export.txt
 ./ntree test_multi_1 test_multi_2 --export-txt multi_export.txt
 cat multi_export.txt
 rm -f multi_export.txt
@@ -190,9 +208,6 @@ echo "--- Multiple roots in find mode ---"
 
 echo "--- Mixed existence / nonexistent roots ---"
 ./ntree test_multi_1 /nonexistent test_multi_2 || echo "Set exit code 1 as expected"
-
-# Cleanup
-rm -rf test_multi_1 test_multi_2
 
 echo ""
 echo "============================================"
@@ -205,8 +220,6 @@ touch "test_unicode/hello world.txt"
 
 ./ntree test_unicode
 
-rm -rf test_unicode
-
 echo ""
 echo "============================================"
 echo "SYMLINK TEST"
@@ -216,11 +229,6 @@ mkdir -p test_link
 ln -sf . test_link/loop
 
 ./ntree test_link
-
-rm -rf test_link
-
-# Clean up local alias link
-rm -f ntree
 
 echo ""
 echo "============================================"

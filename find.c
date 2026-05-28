@@ -1,3 +1,21 @@
+/*
+ * find.c — isolated path search traversal
+ *
+ * Implements --find and --find-dir: a flat, exhaustive recursive walk
+ * that outputs matching paths to stdout.  No tree rendering, no sorting,
+ * no stats.  Hidden entries are visited (find is intentionally exhaustive).
+ *
+ * Ignore-list filtering IS applied to directories before recursion so that
+ * find does not descend into .git/, node_modules/, or any user-specified
+ * ignored entry.  This matches the expected mental model: "find files in
+ * this project, excluding the same directories neotree normally skips."
+ *
+ * match_query() handles comma-separated queries and the same glob rules
+ * used elsewhere: exact name, *.ext suffix, / path, ** path-aware globs.
+ * Note: strtok() is used in match_query() — safe here because find_walk()
+ * is single-threaded and never calls match_query() reentrantly.
+ */
+
 #include "find.h"
 #include "fs.h"
 #include "utils.h"
@@ -79,6 +97,10 @@ void find_walk(const char *dir_path, const char *rel_path, const cli_opts_t *opt
         }
 
         if (is_dir) {
+            /* Respect the ignore list — do not descend into ignored dirs */
+            if (ignore_match(e.name, opts->ignore, opts->ignore_count))
+                continue;
+
             /* Check if directory matches find_dir query */
             if (opts->find_dir) {
                 if (match_query(e.name, child_rel, opts->find_dir)) {

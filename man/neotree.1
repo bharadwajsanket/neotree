@@ -1,6 +1,6 @@
 .TH NEOTREE 1 "May 2026" "neotree v0.4.0" "General Commands Manual"
 .SH NAME
-neotree, ntree \- a fast, minimal, developer-focused directory tree CLI
+neotree, ntree \- display a directory tree
 .SH SYNOPSIS
 .B neotree
 [\fB\-L\fR \fIdepth\fR]
@@ -21,94 +21,120 @@ neotree, ntree \- a fast, minimal, developer-focused directory tree CLI
 [\fIpath\fR ...]
 .SH DESCRIPTION
 .B neotree
-is a fast, minimal directory tree visualizer written in C99.
-It displays a tree layout of directory structures with file type-specific ANSI colors.
-It supports depth limitation, custom exclusion ignore patterns, recursive glob filtering, traversal statistics, custom sorting, search find mode, and plain-text or markdown file export.
-If a .gitignore file is present in a target directory, its ignore patterns are parsed and applied automatically.
-Multiple paths can be passed as arguments, which will be sequentially traversed and rendered.
+is a fast directory tree utility written in C99.
+It renders a tree layout with file-type ANSI colors, supports depth
+limits, glob filtering, custom sorting, traversal statistics, find mode,
+and plain-text or markdown export.
+Multiple path arguments are traversed sequentially.
+If a
+.I .gitignore
+file exists in a target directory its patterns are loaded automatically.
 .SH OPTIONS
 .TP
 .BI \-L \ depth
-Limit display depth. A depth of 1 shows only entries in the root directory.
+Limit display depth.
+A depth of 1 shows only the immediate children of the root.
 .TP
 .BI \-\-ignore \ patterns
-Ignore files or directories by name (comma-separated). Built-in defaults ignore .git, node_modules, __pycache__, target, and build. Additionally, any .gitignore found in target directories is parsed and loaded automatically.
+Ignore entries by name (comma-separated, repeatable).
+Built-in defaults: .git, node_modules, __pycache__, target, build.
 .TP
 .BI \-\-pattern \ glob
-Show only files matching the recursive glob pattern (e.g. *.c or **/*.h).
+Show only files matching the glob pattern (e.g.\&
+.IR *.c ,
+.IR **/*.h ).
+Directories are always shown to allow recursion.
 .TP
 .B \-\-all
-Show hidden files and directories (dot-entries).
+Show hidden (dot-prefixed) entries.
 .TP
 .B \-\-dirs-only
 Show directories only.
 .TP
 .B \-\-size
-Show file size in KB next to each file.
+Print file sizes in KB next to each file entry.
 .TP
 .BI \-\-sort \ key
-Sort entries within each group (directory-first by default) by key: name (alphabetical, default), size (ascending), or modified (oldest first).
+Sort entries within each group.
+.I key
+is one of:
+.BR name " (alphabetical, default),"
+.BR size " (smallest first),"
+.BR modified " (most recently modified first)."
 .TP
 .B \-\-reverse
-Reverse active sort direction (requires \-\-sort to be specified).
+Reverse the active sort direction.
+Requires
+.BR \-\-sort .
 .TP
 .B \-\-stats
-Print traversal statistics (counts of directories, files, total size) and a breakdown of files by extension, sorted by frequency.
+Print traversal statistics (directory count, file count, total size)
+and a frequency-sorted extension breakdown.
 .TP
 .BI \-\-find \ query
-Isolated file search by name/path/glob (comma-separated). Bypasses tree rendering and outputs matching paths.
+Isolated file search by name, glob, or path (comma-separated).
+Bypasses tree rendering.
+Respects the ignore list.
 .TP
 .BI \-\-find-dir \ query
-Isolated directory search by name/path/glob (comma-separated). Bypasses tree rendering and outputs matching paths.
+Isolated directory search by name, glob, or path (comma-separated).
+Bypasses tree rendering.
+Respects the ignore list.
 .TP
 .BI \-\-export-txt \ file
-Write plain-text tree (no ANSI codes) to file.
+Write plain-text tree (no ANSI codes) to
+.IR file .
 .TP
 .BI \-\-export-markdown \ file
-Write fenced markdown tree to file.
+Write a fenced code-block markdown tree to
+.IR file .
 .TP
 .B \-\-no-color
 Disable ANSI color output.
+Color is also disabled automatically when stdout is not a terminal.
 .TP
 .B \-\-no-dirs-first
-Disable directory-first ordering.
+Disable directory-first ordering within each level.
 .TP
 .B \-h, \-\-help
-Show help message and exit.
+Show help and exit.
 .TP
 .B \-\-version
 Show version and exit.
 .SH EXAMPLES
-Traverse multiple paths and show traversal statistics:
+Display tree with traversal statistics:
 .IP
-.B neotree src tests \-\-stats
+.B neotree --stats src
 .PP
-Find all C files recursively:
+Find all C source files recursively:
 .IP
-.B neotree \-\-find \(aq*.c\(aq
+.B neotree --find '*.c'
 .PP
-Filter files by recursive glob:
+Show only .h files anywhere under src/:
 .IP
-.B neotree \-\-pattern \(aq**/*.h\(aq
+.B neotree --pattern 'src/**/*.h'
 .PP
-Show directory structure only:
+Show directory structure only, two levels deep:
 .IP
-.B neotree \-\-dirs-only
+.B neotree --dirs-only -L 2
 .PP
-Sort files by size descending:
+Sort files by size, largest first:
 .IP
-.B neotree \-\-sort size \-\-reverse
+.B neotree --sort size --reverse
 .SH EXIT STATUS
 .TP
 .B 0
 Success.
 .TP
 .B 1
-Failure (e.g. invalid options, nonexistent directory).
+One or more root paths did not exist, or an invalid option was given.
+.SH BUGS
+Report bugs at https://github.com/bharadwajsanket/neotree/issues
 .SH AUTHOR
-Sanket Bharadwaj <https://github.com/bharadwajsanket>
+Sanket Bharadwaj
 .SH LICENSE
 GNU GPL v3.0
 .SH SEE ALSO
 .BR find (1),
+.BR ls (1),
 .BR tree (1)

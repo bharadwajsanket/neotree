@@ -1,11 +1,29 @@
+# build artifacts
 neotree
+ntree
 *.o
-.DS_Store
 *.d
 neotree.dSYM/
+
+# macOS metadata
+.DS_Store
+
+# release binaries
+neotree-linux
+neotree-macos
+neotree-windows.exe
+
+# test output files
 tree.txt
 tree.md
 both.txt
 both.md
 out.txt
+
+# test sandbox directories (created / removed by test.sh)
 test_sandbox/
+test_find_sandbox/
+test_multi_1/
+test_multi_2/
+test_link/
+test_unicode/

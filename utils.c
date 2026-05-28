@@ -418,14 +418,14 @@ void ext_table_add(ext_table_t *t, const char *filename) {
 }
 
 
-
 /*
- * ext_table_print -- sort and print the extension summary to stdout.
+ * format_size -- format a byte count as a human-readable string.
  *
- * Output format (highest count first, alphabetical tie-breaker):
- *   .c            5
- *   .h            4
- *   (no ext)      1
+ * Output format (largest fitting unit):
+ *   < 1 KB  -> "N B"
+ *   < 1 MB  -> "N.N KB"
+ *   < 1 GB  -> "N.N MB"
+ *   >= 1 GB -> "N.N GB"
  */
 void format_size(long long bytes, char *buf, size_t buf_size) {
     if (bytes < 1024) {

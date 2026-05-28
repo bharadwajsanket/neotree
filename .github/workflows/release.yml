@@ -21,8 +21,11 @@ jobs:
       - name: Build
         run: |
           gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
-              main.c tree.c fs.c cli.c utils.c \
+              main.c tree.c fs.c cli.c utils.c find.c \
               -o neotree-linux
+
+      - name: Smoke test
+        run: ./neotree-linux --version && ./neotree-linux --no-color .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -42,8 +45,11 @@ jobs:
       - name: Build
         run: |
           gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
-              main.c tree.c fs.c cli.c utils.c \
+              main.c tree.c fs.c cli.c utils.c find.c \
               -o neotree-macos
+
+      - name: Smoke test
+        run: ./neotree-macos --version && ./neotree-macos --no-color .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -66,7 +72,7 @@ jobs:
       - name: Build
         run: |
           x86_64-w64-mingw32-gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
-              main.c tree.c fs.c cli.c utils.c \
+              main.c tree.c fs.c cli.c utils.c find.c \
               -o neotree-windows.exe
 
       - name: Upload artifact
