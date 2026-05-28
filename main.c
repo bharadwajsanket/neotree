@@ -43,6 +43,45 @@
 #include "fs.h"
 #include "find.h"
 
+/* ------------------------------------------------------------------ */
+/*  Windows console initialisation                                      */
+/* ------------------------------------------------------------------ */
+
+#ifdef _WIN32
+#  include <windows.h>
+/*
+ * win32_console_init -- set UTF-8 code page and enable ANSI processing.
+ *
+ * Without this, box-drawing characters (├── └── │) render as mojibake
+ * and ANSI color escapes print as literal text.
+ *
+ * SetConsoleOutputCP(CP_UTF8) / SetConsoleCP(CP_UTF8):
+ *   Set the console to code page 65001 (UTF-8) so UTF-8 bytes written
+ *   via printf/fputs are decoded and displayed correctly.  Safe to call
+ *   unconditionally — when stdout is redirected the bytes go to the file
+ *   unchanged and the code page setting has no effect.
+ *
+ * ENABLE_VIRTUAL_TERMINAL_PROCESSING:
+ *   Enables ANSI/VT escape sequence interpretation in the Windows console
+ *   host (supported since Windows 10 build 1511).  Only set when stdout
+ *   is a real console; GetConsoleMode fails gracefully on a pipe/file.
+ *
+ * Both calls are best-effort: failure is silently ignored.  The program
+ * remains functional — just with degraded rendering — if either fails.
+ */
+static void win32_console_init(void) {
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (h != INVALID_HANDLE_VALUE) {
+        DWORD mode = 0;
+        if (GetConsoleMode(h, &mode))
+            SetConsoleMode(h, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    }
+}
+#endif /* _WIN32 */
+
 #ifdef __GNUC__
 static void print_all(FILE *out, FILE *export_txt, FILE *export_md, const char *fmt, ...) __attribute__((format(printf, 4, 5)));
 #endif
@@ -70,6 +109,10 @@ static int main_ext_sort_cmp(const void *a, const void *b) {
 
 
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+    win32_console_init();
+#endif
+
     /* ---- parse args ---- */
     cli_opts_t opts;
     cli_parse(argc, argv, &opts);

@@ -4,7 +4,7 @@
 
 **A fast, minimal directory tree utility for developers.**
 
-[![Version](https://img.shields.io/badge/version-v0.4.0-6C63FF?style=flat-square)](https://github.com/bharadwajsanket/neotree/releases)
+[![Version](https://img.shields.io/badge/version-v0.5.4-6C63FF?style=flat-square)](https://github.com/bharadwajsanket/neotree/releases)
 [![CI](https://github.com/bharadwajsanket/neotree/actions/workflows/ci.yml/badge.svg)](https://github.com/bharadwajsanket/neotree/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-blue?style=flat-square)](./LICENSE)
 

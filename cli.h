@@ -10,7 +10,7 @@
 
 #define CLI_MAX_IGNORE   64    /* max --ignore entries (CLI + .gitignore) */
 #define CLI_MAX_ROOTS    64    /* max root paths allowed */
-#define CLI_VERSION      "0.4.0"
+#define CLI_VERSION      "0.5.4"
 #define CLI_PROGRAM      "neotree"
 
 /* ------------------------------------------------------------------ */

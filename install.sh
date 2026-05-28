@@ -26,8 +26,8 @@ INSTALL_DIR="/usr/local/bin"
 MAN_INSTALL_DIR="/usr/local/share/man/man1"
 
 # Pin to a specific release. Users may override:
-#   VERSION=v0.4.0 curl -sSL ... | bash
-VERSION="${VERSION:-v0.4.0}"
+#   VERSION=v0.5.4 curl -sSL ... | bash
+VERSION="${VERSION:-v0.5.4}"
 
 # TMP_DIR is intentionally empty until mktemp runs so that cleanup()
 # is safe to call even if the script fails before mktemp.
