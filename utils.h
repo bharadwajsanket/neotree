@@ -121,7 +121,7 @@ typedef struct {
     char  *name;     /* heap-allocated copy */
     int    is_dir;
     long long size_bytes; /* file size in bytes; -1 if unknown or directory */
-    long   mtime;    /* modification time (seconds since epoch); 0 if unknown */
+    long long mtime;    /* modification time (seconds since epoch); 0 if unknown */
 } entry_t;
 
 typedef struct {
@@ -132,7 +132,7 @@ typedef struct {
 
 void  entry_vec_init(entry_vec_t *v);
 int   entry_vec_push(entry_vec_t *v, const char *name, int is_dir,
-                     long long size_bytes, long mtime);
+                     long long size_bytes, long long mtime);
 void  entry_vec_sort(entry_vec_t *v, int dirs_first, sort_by_t sort_by, int reverse);
 void  entry_vec_free(entry_vec_t *v);
 

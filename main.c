@@ -106,6 +106,25 @@ static int main_ext_sort_cmp(const void *a, const void *b) {
     return strcmp(ea->ext, eb->ext);
 }
 
+static void suggest_wildcard_hint(const char *root, const cli_opts_t *opts) {
+    const char *opt_name = NULL;
+    const char *val = NULL;
+    if (opts->find) { opt_name = "--find"; val = opts->find; }
+    else if (opts->find_dir) { opt_name = "--find-dir"; val = opts->find_dir; }
+    else if (opts->pattern) { opt_name = "--pattern"; val = opts->pattern; }
+
+    if (opt_name && val) {
+        const char *val_ext = strrchr(val, '.');
+        const char *root_ext = strrchr(root, '.');
+        if (val_ext && root_ext && strcmp(val_ext, root_ext) == 0) {
+            fprintf(stderr, "\nHint:\n");
+            fprintf(stderr, "  Did you mean:\n\n");
+            fprintf(stderr, "    neotree %s \"*%s\"\n\n", opt_name, val_ext);
+            fprintf(stderr, "  Shell expansion expanded the wildcard before neotree received it.\n\n");
+        }
+    }
+}
+
 
 
 int main(int argc, char *argv[]) {
@@ -127,6 +146,7 @@ int main(int argc, char *argv[]) {
             const char *root = opts.roots[r];
             if (!fs_is_dir(root)) {
                 fprintf(stderr, "neotree: '%s' is not a directory or does not exist\n", root);
+                suggest_wildcard_hint(root, &opts);
                 exit_code = 1;
                 continue;
             }
@@ -171,6 +191,7 @@ int main(int argc, char *argv[]) {
 
         if (!fs_is_dir(root)) {
             fprintf(stderr, "neotree: '%s' is not a directory or does not exist\n", root);
+            suggest_wildcard_hint(root, &opts);
             exit_code = 1;
             continue;
         }
@@ -202,17 +223,10 @@ int main(int argc, char *argv[]) {
         if (export_txt) fprintf(export_txt, "%s%s\n", root, needs_slash ? "/" : "");
         if (export_md)  fprintf(export_md,  "%s%s\n", root, needs_slash ? "/" : "");
 
-        /* ---- primary walk (stdout + optional txt export) ---- */
+        /* ---- primary walk (stdout + optional txt/markdown export) ---- */
         tree_stats_t stats = { 0, 0, 0, "", -1, 0 };
         tree_walk(root, "", "", &opts, 0, &stats,
-                  stdout, export_txt, ext_tbl_ptr);
-
-        /* ---- markdown export pass ---- */
-        if (export_md) {
-            tree_stats_t stats2 = { 0, 0, 0, "", -1, 0 };
-            tree_walk(root, "", "", &opts, 0, &stats2,
-                      export_md, NULL, NULL);
-        }
+                  stdout, export_txt, export_md, ext_tbl_ptr);
 
         /* ---- summary line ---- */
         char summary[160];
@@ -247,6 +261,7 @@ int main(int argc, char *argv[]) {
 
                 print_all(stdout, export_txt, export_md, "  %-17s%d\n", "directories", stats.total_dirs);
                 print_all(stdout, export_txt, export_md, "  %-17s%d\n", "files", stats.total_files);
+                print_all(stdout, export_txt, export_md, "  %-17s%d\n", "max depth", stats.max_depth);
                 print_all(stdout, export_txt, export_md, "  %-17s%s\n", "total size", size_buf);
 
                 if (ext_tbl_ptr && ext_tbl_ptr->len > 0) {

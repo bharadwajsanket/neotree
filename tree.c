@@ -62,14 +62,14 @@ static long long get_file_size_bytes(const char *path) {
     return bytes;
 }
 
-static long get_mtime(const char *path) {
+static long long get_mtime(const char *path) {
     WIN32_FILE_ATTRIBUTE_DATA info;
     if (!GetFileAttributesExA(path, GetFileExInfoStandard, &info))
         return 0;
     ULARGE_INTEGER uli;
     uli.LowPart  = info.ftLastWriteTime.dwLowDateTime;
     uli.HighPart = info.ftLastWriteTime.dwHighDateTime;
-    return (long)((uli.QuadPart - 116444736000000000ULL) / 10000000ULL);
+    return (long long)((uli.QuadPart - 116444736000000000ULL) / 10000000ULL);
 }
 
 static int is_executable(const char *path) {
@@ -86,10 +86,10 @@ static long long get_file_size_bytes(const char *path) {
     return (long long)st.st_size;
 }
 
-static long get_mtime(const char *path) {
+static long long get_mtime(const char *path) {
     struct stat st;
     if (stat(path, &st) != 0) return 0;
-    return (long)st.st_mtime;
+    return (long long)st.st_mtime;
 }
 
 static int is_executable(const char *path) {
@@ -202,7 +202,8 @@ static void render_entry(const char *prefix,
                           int         n_files,
                           long        size_kb,
                           FILE       *out,
-                          FILE       *export_out) {
+                          FILE       *export_txt,
+                          FILE       *export_md) {
     const char *connector = is_last ? BRANCH_LAST : BRANCH_MID;
 
     const char *color;
@@ -235,7 +236,8 @@ static void render_entry(const char *prefix,
                     prefix, connector, color, name, reset);
     }
 
-    fprint_clean(export_out, prefix, connector, name, is_dir, n_files, size_kb);
+    fprint_clean(export_txt, prefix, connector, name, is_dir, n_files, size_kb);
+    fprint_clean(export_md,  prefix, connector, name, is_dir, n_files, size_kb);
 }
 
 /* ------------------------------------------------------------------ */
@@ -293,7 +295,8 @@ void tree_walk(const char       *path,
                int               current_depth,
                tree_stats_t     *stats,
                FILE             *out,
-               FILE             *export_out,
+               FILE             *export_txt,
+               FILE             *export_md,
                ext_table_t      *ext_tbl) {
 
     if (opts->max_depth != -1 && current_depth >= opts->max_depth)
@@ -317,14 +320,15 @@ void tree_walk(const char       *path,
             continue;
 
         long long sz = -1;
-        long mt = 0;
+        long long mt = 0;
         if (!is_dir) {
             char child_path[MAX_PATH];
-            fs_join(child_path, sizeof(child_path), path, e.name);
-            if (opts->sort_by == SORT_SIZE || opts->show_size || (opts->show_stats && !opts->dirs_only))
-                sz = get_file_size_bytes(child_path);
-            if (opts->sort_by == SORT_MODIFIED)
-                mt = get_mtime(child_path);
+            if (fs_join(child_path, sizeof(child_path), path, e.name)) {
+                if (opts->sort_by == SORT_SIZE || opts->show_size || (opts->show_stats && !opts->dirs_only))
+                    sz = get_file_size_bytes(child_path);
+                if (opts->sort_by == SORT_MODIFIED)
+                    mt = get_mtime(child_path);
+            }
         }
 
         if (!entry_vec_push(&vec, e.name, is_dir, sz, mt)) {
@@ -345,7 +349,10 @@ void tree_walk(const char       *path,
         entry_t *ent = &vec.data[i];
 
         char child_path[MAX_PATH];
-        fs_join(child_path, sizeof(child_path), path, ent->name);
+        if (!fs_join(child_path, sizeof(child_path), path, ent->name)) {
+            fprintf(stderr, "neotree: path too long, skipping: %s/%s\n", path, ent->name);
+            continue;
+        }
 
         if (ent->is_dir) {
             stats->total_dirs++;
@@ -368,7 +375,7 @@ void tree_walk(const char       *path,
                 n_files = count_direct_files(child_path, child_rel, opts);
 
             render_entry(tree_prefix, is_last, ent->name, NULL,
-                         1, n_files, -1, out, export_out);
+                         1, n_files, -1, out, export_txt, export_md);
 
             char new_prefix[MAX_PREFIX];
             snprintf(new_prefix, sizeof(new_prefix), "%s%s",
@@ -377,7 +384,7 @@ void tree_walk(const char       *path,
 
             tree_walk(child_path, new_prefix, child_rel, opts,
                       current_depth + 1, stats,
-                      out, export_out, ext_tbl);
+                      out, export_txt, export_md, ext_tbl);
 
         } else {
             stats->total_files++;
@@ -416,7 +423,7 @@ void tree_walk(const char       *path,
                 }
 
                 render_entry(tree_prefix, is_last, ent->name, child_path,
-                             0, 0, size_kb, out, export_out);
+                             0, 0, size_kb, out, export_txt, export_md);
             }
         }
     }

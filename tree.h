@@ -59,7 +59,8 @@ void tree_walk(const char       *path,
                int               current_depth,
                tree_stats_t     *stats,
                FILE             *out,
-               FILE             *export_out,
+               FILE             *export_txt,
+               FILE             *export_md,
                ext_table_t      *ext_tbl);
 
 #endif /* TREE_H */

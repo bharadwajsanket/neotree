@@ -148,7 +148,10 @@ void cli_load_gitignore(cli_opts_t *opts, const char *root_path) {
         }
         if (dup) continue;
 
-        if (opts->ignore_count >= CLI_MAX_IGNORE) break;
+        if (opts->ignore_count >= CLI_MAX_IGNORE) {
+            fprintf(stderr, "neotree: warning: ignore list full (max %d), some .gitignore patterns skipped\n", CLI_MAX_IGNORE);
+            break;
+        }
 
         char *copy = malloc(plen + 1);
         if (!copy) break; /* OOM: stop loading, keep what we have */
@@ -299,8 +302,8 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
             if (i + 1 >= argc) die_usage("-L requires a depth argument", NULL);
             char *end;
             long v = strtol(argv[++i], &end, 10);
-            if (*end != '\0' || v < 1)
-                die_usage("-L depth must be a positive integer", argv[i]);
+            if (*end != '\0' || v < 1 || v > 10000)
+                die_usage("-L depth must be a positive integer between 1 and 10000", argv[i]);
             opts->max_depth = (int)v;
             continue;
         }

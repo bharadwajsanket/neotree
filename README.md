@@ -4,7 +4,7 @@
 
 **A fast, minimal directory tree utility for developers.**
 
-[![Version](https://img.shields.io/badge/version-v0.5.4-6C63FF?style=flat-square)](https://github.com/bharadwajsanket/neotree/releases)
+[![Version](https://img.shields.io/badge/version-v1.5.4-6C63FF?style=flat-square)](https://github.com/bharadwajsanket/neotree/releases)
 [![CI](https://github.com/bharadwajsanket/neotree/actions/workflows/ci.yml/badge.svg)](https://github.com/bharadwajsanket/neotree/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-blue?style=flat-square)](./LICENSE)
 
@@ -263,6 +263,33 @@ sudo make uninstall
 Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\neotree"
 # Remove the install directory from your user PATH as well.
 ```
+
+---
+
+## Notes, Caveats & Limitations
+
+### Shell Wildcard Expansion
+A common mistake is typing:
+```bash
+neotree --find *.c
+```
+Because shells expand wildcards (like `*.c` or `*.md`) before running the program, `neotree` will receive the expanded list of filenames as separate arguments instead of the raw pattern. This results in error messages like `neotree: 'file.c' is not a directory`.
+
+**Solution:** Always quote your patterns:
+```bash
+neotree --find "*.c"
+neotree --pattern "*.md"
+```
+
+### Architecture Support
+The automatic installer (`install.sh`) supports:
+- **macOS**: `x86_64` (Intel) and `arm64` (Apple Silicon).
+- **Linux**: `x86_64` (amd64), `arm64` (`aarch64`), and `armv7` (`armhf`).
+On unsupported architectures, the installer will print an instruction to compile from source.
+
+### Windows Unicode & Path Limitations
+Windows Terminal and PowerShell render UTF-8 box-drawing characters correctly because `neotree` configures the console to the UTF-8 code page (65001) at startup.
+However, because Windows paths are parsed via ANSI standard APIs (`GetFileAttributesA` and `FindFirstFileA`), paths containing characters outside the local active ANSI code page are not supported and may fail to open or display placeholder (`?`) characters. For full Unicode path support, compiling on Linux/macOS or WSL is recommended.
 
 ---
 

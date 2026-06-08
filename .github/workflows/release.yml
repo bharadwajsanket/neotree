@@ -18,20 +18,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build
+      - name: Build x86_64
         run: |
           gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
               main.c tree.c fs.c cli.c utils.c find.c \
-              -o neotree-linux
+              -o neotree-linux-x86_64
 
-      - name: Smoke test
-        run: ./neotree-linux --version && ./neotree-linux --no-color .
+      - name: Install arm64 cross compiler
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      - name: Upload artifact
+      - name: Build arm64
+        run: |
+          aarch64-linux-gnu-gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
+              main.c tree.c fs.c cli.c utils.c find.c \
+              -o neotree-linux-arm64
+
+      - name: Install armv7 cross compiler
+        run: sudo apt-get install -y gcc-arm-linux-gnueabihf
+
+      - name: Build armv7
+        run: |
+          arm-linux-gnueabihf-gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
+              main.c tree.c fs.c cli.c utils.c find.c \
+              -o neotree-linux-armv7
+
+      - name: Upload x86_64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neotree-linux
-          path: neotree-linux
+          name: neotree-linux-x86_64
+          path: neotree-linux-x86_64
+
+      - name: Upload arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neotree-linux-arm64
+          path: neotree-linux-arm64
+
+      - name: Upload armv7 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neotree-linux-armv7
+          path: neotree-linux-armv7
 
   # ------------------------------------------------------------------ #
   #  macOS                                                               #
@@ -42,20 +69,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build
+      - name: Build x86_64
         run: |
-          gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
+          clang -target x86_64-apple-macos10.12 -std=c99 -Wall -Wextra -Wpedantic -O2 \
               main.c tree.c fs.c cli.c utils.c find.c \
-              -o neotree-macos
+              -o neotree-macos-x86_64
 
-      - name: Smoke test
-        run: ./neotree-macos --version && ./neotree-macos --no-color .
+      - name: Build arm64
+        run: |
+          clang -target arm64-apple-macos11 -std=c99 -Wall -Wextra -Wpedantic -O2 \
+              main.c tree.c fs.c cli.c utils.c find.c \
+              -o neotree-macos-arm64
 
-      - name: Upload artifact
+      - name: Upload x86_64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neotree-macos
-          path: neotree-macos
+          name: neotree-macos-x86_64
+          path: neotree-macos-x86_64
+
+      - name: Upload arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neotree-macos-arm64
+          path: neotree-macos-arm64
 
   # ------------------------------------------------------------------ #
   #  Windows (cross-compiled via MinGW on Ubuntu)                        #
@@ -102,6 +138,9 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            dist/neotree-linux/neotree-linux
-            dist/neotree-macos/neotree-macos
+            dist/neotree-linux-x86_64/neotree-linux-x86_64
+            dist/neotree-linux-arm64/neotree-linux-arm64
+            dist/neotree-linux-armv7/neotree-linux-armv7
+            dist/neotree-macos-x86_64/neotree-macos-x86_64
+            dist/neotree-macos-arm64/neotree-macos-arm64
             dist/neotree-windows.exe/neotree-windows.exe

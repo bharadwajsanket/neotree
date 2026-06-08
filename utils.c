@@ -296,7 +296,7 @@ void entry_vec_init(entry_vec_t *v) {
 }
 
 int entry_vec_push(entry_vec_t *v, const char *name, int is_dir,
-                   long long size_bytes, long mtime) {
+                   long long size_bytes, long long mtime) {
     if (v->len == v->cap) {
         int new_cap = v->cap ? v->cap * 2 : ENTRY_VEC_INIT_CAP;
         entry_t *tmp = realloc(v->data, (size_t)new_cap * sizeof(entry_t));

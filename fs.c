@@ -211,7 +211,7 @@ int fs_is_dir(const char *path) {
  * Shared helpers (platform-independent)
  * ================================================================== */
 
-void fs_join(char *buf, size_t size, const char *path, const char *name) {
+int fs_join(char *buf, size_t size, const char *path, const char *name) {
 #ifdef _WIN32
     const char sep = '\\';
 #else
@@ -227,14 +227,15 @@ void fs_join(char *buf, size_t size, const char *path, const char *name) {
 
     /* write: path + sep + name + NUL */
     if (plen + 1 + nlen + 1 > size) {
-        /* truncate gracefully */
+        /* truncate gracefully and return failure */
         strncpy(buf, path, size - 1);
         buf[size - 1] = '\0';
-        return;
+        return 0;
     }
 
     memcpy(buf, path, plen);
     buf[plen] = sep;
     memcpy(buf + plen + 1, name, nlen);
     buf[plen + 1 + nlen] = '\0';
+    return 1;
 }

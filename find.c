@@ -87,7 +87,10 @@ void find_walk(const char *dir_path, const char *rel_path, const cli_opts_t *opt
 
         /* Construct child paths */
         char child_dir[4096];
-        fs_join(child_dir, sizeof(child_dir), dir_path, e.name);
+        if (!fs_join(child_dir, sizeof(child_dir), dir_path, e.name)) {
+            fprintf(stderr, "neotree: path too long, skipping: %s/%s\n", dir_path, e.name);
+            continue;
+        }
 
         char child_rel[4096];
         if (rel_path[0] == '\0') {

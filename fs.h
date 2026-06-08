@@ -69,8 +69,8 @@ int fs_is_dir(const char *path);
 
 /*
  * fs_join — write path+"/"+name into buf (size bytes).
- *           Always NUL-terminates; truncates silently if too long.
+ *           Returns 1 on success; 0 on overflow truncation.
  */
-void fs_join(char *buf, size_t size, const char *path, const char *name);
+int fs_join(char *buf, size_t size, const char *path, const char *name);
 
 #endif /* FS_H */

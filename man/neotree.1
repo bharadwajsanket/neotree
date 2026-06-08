@@ -1,4 +1,4 @@
-.TH NEOTREE 1 "May 2026" "neotree v0.5.4" "General Commands Manual"
+.TH NEOTREE 1 "June 2026" "neotree v1.5.4" "General Commands Manual"
 .SH NAME
 neotree, ntree \- display a directory tree
 .SH SYNOPSIS
@@ -121,6 +121,20 @@ Show directory structure only, two levels deep:
 Sort files by size, largest first:
 .IP
 .B neotree --sort size --reverse
+.SH CAVEATS
+.SS Shell Wildcard Expansion
+Command-line wildcards (e.g.
+.IR *.c ,
+.IR *.md )
+are expanded by the shell before they reach
+.BR neotree .
+This causes the expanded filenames to be parsed as root paths, leading to errors.
+To prevent this, wildcards must be quoted, e.g.
+.B neotree --find "*.c"
+or
+.B neotree --pattern "*.md"
+.SS Windows Unicode Limitations
+While box-drawing symbols and UTF-8 output render correctly on Windows, paths containing characters not representable in the local ANSI code page are not supported due to the underlying ANSI filesystem APIs.
 .SH EXIT STATUS
 .TP
 .B 0

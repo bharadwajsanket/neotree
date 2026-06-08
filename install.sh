@@ -26,8 +26,8 @@ INSTALL_DIR="/usr/local/bin"
 MAN_INSTALL_DIR="/usr/local/share/man/man1"
 
 # Pin to a specific release. Users may override:
-#   VERSION=v0.5.4 curl -sSL ... | bash
-VERSION="${VERSION:-v0.5.4}"
+#   VERSION=v1.5.4 curl -sSL ... | bash
+VERSION="${VERSION:-v1.5.4}"
 
 # TMP_DIR is intentionally empty until mktemp runs so that cleanup()
 # is safe to call even if the script fails before mktemp.
@@ -73,16 +73,43 @@ printf "─────────────────\n\n"
 # ------------------------------------------------------------------ #
 
 OS="$(uname -s)"
+ARCH="$(uname -m)"
 case "$OS" in
-    Linux*)   OS_NAME="Linux";  ASSET="neotree-linux"  ;;
-    Darwin*)  OS_NAME="macOS";  ASSET="neotree-macos"  ;;
+    Linux*)
+        OS_NAME="Linux"
+        case "$ARCH" in
+            x86_64|amd64)   ASSET="neotree-linux-x86_64" ;;
+            arm64|aarch64)  ASSET="neotree-linux-arm64"  ;;
+            armv7*)         ASSET="neotree-linux-armv7"  ;;
+            *)
+                warn "Unsupported architecture: $ARCH"
+                die "To install neotree on Linux $ARCH, please build from source:
+       git clone https://github.com/${REPO_OWNER}/${REPO_NAME}
+       cd ${REPO_NAME} && make && sudo make install"
+                ;;
+        esac
+        ;;
+    Darwin*)
+        OS_NAME="macOS"
+        case "$ARCH" in
+            x86_64|amd64)   ASSET="neotree-macos-x86_64" ;;
+            arm64|aarch64)  ASSET="neotree-macos-arm64"  ;;
+            *)
+                warn "Unsupported architecture: $ARCH"
+                die "To install neotree on macOS $ARCH, please build from source:
+       git clone https://github.com/${REPO_OWNER}/${REPO_NAME}
+       cd ${REPO_NAME} && make && sudo make install"
+                ;;
+        esac
+        ;;
     *)        die "Unsupported OS: $OS. Only Linux and macOS are supported.
        For Windows, download neotree.exe from:
        https://github.com/${REPO_OWNER}/${REPO_NAME}/releases" ;;
 esac
 
-info "Detected OS: $OS_NAME"
-info "Version:     $VERSION"
+info "Detected OS:   $OS_NAME"
+info "Detected Arch: $ARCH"
+info "Version:       $VERSION"
 
 # ------------------------------------------------------------------ #
 #  2. curl check                                                       #
