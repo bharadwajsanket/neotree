@@ -73,4 +73,24 @@ int fs_is_dir(const char *path);
  */
 int fs_join(char *buf, size_t size, const char *path, const char *name);
 
+/*
+ * fs_get_size — return file size in bytes.
+ *               Returns -1 on error (not a file, no access, etc.).
+ *               Follows symlinks (uses stat, not lstat).
+ */
+long long fs_get_size(const char *path);
+
+/*
+ * fs_get_mtime — return last-modified time as a UNIX timestamp.
+ *                Returns 0 on error.
+ *                Follows symlinks (uses stat, not lstat).
+ */
+long long fs_get_mtime(const char *path);
+
+/*
+ * fs_is_exec — return 1 if the file has execute permission.
+ *              Always returns 0 on Windows (no exec bits).
+ */
+int fs_is_exec(const char *path);
+
 #endif /* FS_H */

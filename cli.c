@@ -182,52 +182,87 @@ static void die_usage(const char *msg, const char *arg) {
 
 void cli_usage(void) {
     printf(
-        "Usage: %s [OPTIONS] [PATH...]\n"
+        "============================================================\n"
+        "%s v2.5.4\n"
+        "Fast, modern directory tree for developers.\n"
+        "============================================================\n"
         "\n"
-        "Display a directory tree or find paths.\n"
+        "USAGE\n"
+        "-----\n"
+        "  %s [OPTIONS] [PATH...]\n"
         "\n"
-        "Options:\n"
-        "  -L <depth>            Limit display depth (1 = root entries only)\n"
-        "  --ignore <patterns>   Ignore entries by name (comma-separated or repeatable)\n"
-        "  --pattern <glob>      Filter files matching glob (e.g. *.c or **/*.h)\n"
-        "  --all                 Show hidden files (dot-entries)\n"
-        "  --dirs-only           Show directories only\n"
-        "  --size                Show file sizes in KB\n"
-        "  --sort <key>          Sort entries: name (default), size, modified\n"
-        "  --reverse             Reverse the active sort mode (requires --sort)\n"
-        "  --stats               Print traversal statistics and extension breakdown\n"
-        "  --find <query>        Find files by name/glob/path (comma-separated)\n"
-        "  --find-dir <query>    Find directories by name/glob/path (comma-separated)\n"
-        "  --export-txt <file>   Write plain-text tree to file\n"
-        "  --export-markdown <file>  Write markdown tree to file\n"
-        "  --no-color            Disable ANSI color output\n"
-        "  --no-dirs-first       Disable directory-first ordering\n"
-        "  -h, --help            Show this help and exit\n"
-        "  --version             Show version and exit\n"
+        "PATH\n"
+        "----\n"
+        "  [PATH...]                   Directories to display (default: .)\n"
         "\n"
-        "Default ignored: .git, node_modules, __pycache__, target, build\n"
-        ".gitignore in the root directory is loaded automatically.\n"
+        "DISPLAY\n"
+        "-------\n"
+        "  -L <depth>                  Limit display depth (1 = root entries only)\n"
+        "  --all                       Show hidden files (dot-entries)\n"
+        "  --dirs-only                 Show directories only\n"
+        "  --size                      Show file sizes next to each file\n"
+        "  --sort <name|size|modified> Sort entries by key (default: name)\n"
+        "  --reverse                   Reverse the active sort order (requires --sort)\n"
+        "  --no-dirs-first             Disable directory-first ordering\n"
+        "  --no-color                  Disable ANSI color output\n"
         "\n"
-        "Glob patterns (--pattern):\n"
-        "  *.c           match .c files in the current directory\n"
-        "  **/*.c        match .c files at any depth\n"
-        "  src/**/*.h    match .h files only under src/ (path-aware)\n"
-        "  foo/**/bar.py match bar.py anywhere under foo/\n"
+        "FILTERING\n"
+        "---------\n"
+        "  --pattern <glob>            Filter files matching glob pattern\n"
+        "  --ignore <patterns>         Ignore entries by name (comma-separated)\n"
         "\n"
-        "  Path-aware note: 'src/**/*.h' will NOT match './cli.h'.\n"
-        "  Use '**/*.h' to match .h files everywhere.\n"
+        "ANALYSIS\n"
+        "--------\n"
+        "  --stats                     Print statistics (files, size, deepest path, etc.)\n"
+        "                              Includes:\n"
+        "                              * traversal statistics\n"
+        "                              * extension breakdown\n"
+        "                              * largest file\n"
+        "                              * largest directory\n"
+        "                              * deepest path\n"
+        "  --largest <N>               Show top N largest files (standalone mode)\n"
+        "  --largest-dirs <N>          Show top N largest directories by recursive size\n"
         "\n"
-        "Export notes:\n"
-        "  Export files are automatically excluded from the tree output.\n"
-        "  Markdown export wraps the tree in a fenced code block.\n"
+        "SEARCH\n"
+        "------\n"
+        "  --find <query>              Isolated file search (comma-separated, glob-aware)\n"
+        "  --find-dir <query>          Isolated directory search (comma-separated)\n"
         "\n"
-        "Examples:\n"
-        "  %s\n"
-        "  %s --all --stats\n"
-        "  %s --sort size --reverse\n"
-        "  %s --find '*.c,src/**/*.h'\n"
-        "  %s --ignore 'dist,tmp'\n",
-        g_prog_name, g_prog_name, g_prog_name, g_prog_name, g_prog_name, g_prog_name
+        "EXPORT\n"
+        "------\n"
+        "  --export-txt <file>         Write plain-text tree to file\n"
+        "  --export-markdown <file>    Write fenced markdown tree to file\n"
+        "  --export-json <file>        Write RFC 8259 compliant JSON tree to file\n"
+        "\n"
+        "GENERAL\n"
+        "-------\n"
+        "  -h, --help                  Show this help and exit\n"
+        "  --version                   Show version and exit\n"
+        "\n"
+        "DEFAULT IGNORE\n"
+        "--------------\n"
+        "  .git\n"
+        "  node_modules\n"
+        "  __pycache__\n"
+        "  build\n"
+        "  target\n"
+        "\n"
+        "EXAMPLES\n"
+        "--------\n"
+        "  %s                           Current directory\n"
+        "  %s src                       Walk 'src' directory\n"
+        "  %s --stats                   Print statistics for current directory\n"
+        "  %s --largest 10              Print top 10 largest files\n"
+        "  %s --largest-dirs 10         Print top 10 largest directories\n"
+        "  %s --pattern \"**/*.h\"        Display only header files at any depth\n"
+        "  %s --find \"*.c\"              Find all C files recursively\n"
+        "  %s --export-json tree.json   Export tree as JSON to 'tree.json'\n"
+        "\n"
+        "GitHub\n"
+        "------\n"
+        "  https://github.com/bharadwajsanket/neotree\n",
+        g_prog_name, g_prog_name, g_prog_name, g_prog_name, g_prog_name, g_prog_name,
+        g_prog_name, g_prog_name, g_prog_name, g_prog_name
     );
     exit(0);
 }
@@ -265,6 +300,9 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
     opts->find_dir       = NULL;
     opts->export_txt     = NULL;
     opts->export_md      = NULL;
+    opts->export_json    = NULL;
+    opts->largest_n      = 0;
+    opts->largest_dirs_n = 0;
     opts->ignore_count   = 0;
     opts->gitignore_start = 0; /* will be set after argv loop */
 
@@ -385,6 +423,36 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
             continue;
         }
 
+        if (strcmp(arg, "--export-json") == 0) {
+            if (i + 1 >= argc) die_usage("--export-json requires a filename", NULL);
+            opts->export_json = argv[++i];
+            continue;
+        }
+
+        if (strcmp(arg, "--largest") == 0) {
+            if (i + 1 >= argc) die_usage("--largest requires a count", NULL);
+            {
+                char *end;
+                long v = strtol(argv[++i], &end, 10);
+                if (*end != '\0' || v < 1 || v > 10000)
+                    die_usage("--largest count must be 1..10000", argv[i]);
+                opts->largest_n = (int)v;
+            }
+            continue;
+        }
+
+        if (strcmp(arg, "--largest-dirs") == 0) {
+            if (i + 1 >= argc) die_usage("--largest-dirs requires a count", NULL);
+            {
+                char *end;
+                long v = strtol(argv[++i], &end, 10);
+                if (*end != '\0' || v < 1 || v > 10000)
+                    die_usage("--largest-dirs count must be 1..10000", argv[i]);
+                opts->largest_dirs_n = (int)v;
+            }
+            continue;
+        }
+
         die_usage("unknown option", arg);
     }
 
@@ -403,6 +471,9 @@ void cli_parse(int argc, char *argv[], cli_opts_t *opts) {
     }
     if (opts->export_md && opts->ignore_count < CLI_MAX_IGNORE) {
         opts->ignore[opts->ignore_count++] = utils_basename(opts->export_md);
+    }
+    if (opts->export_json && opts->ignore_count < CLI_MAX_IGNORE) {
+        opts->ignore[opts->ignore_count++] = utils_basename(opts->export_json);
     }
 
     /*

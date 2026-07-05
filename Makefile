@@ -21,7 +21,7 @@ PREFIX  ?= /usr/local
 # ---------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------
-SRCS    := main.c tree.c fs.c utils.c cli.c find.c
+SRCS    := main.c tree.c fs.c utils.c cli.c find.c largest.c
 OBJS    := $(SRCS:.c=.o)
 BIN     := neotree
 
@@ -30,7 +30,7 @@ BIN     := neotree
 # ---------------------------------------------------------------
 CFLAGS_BASE := -std=c99 -Wall -Wextra -Wpedantic \
                -Wshadow -Wformat=2 -Wstrict-prototypes \
-               -Wmissing-prototypes
+               -Wmissing-prototypes -Wconversion -Wsign-conversion
 
 CFLAGS_REL  := -O2
 CFLAGS_DBG  := -O0 -g -fsanitize=address,undefined
@@ -41,10 +41,13 @@ CFLAGS      ?= $(CFLAGS_BASE) $(CFLAGS_REL)
 # Default target
 # ---------------------------------------------------------------
 .PHONY: all
-all: $(BIN)
+all: $(BIN) ntree
 
 $(BIN): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
+
+ntree: $(BIN)
+	ln -sf $(BIN) ntree || cp $(BIN) ntree
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -54,7 +57,7 @@ $(BIN): $(OBJS)
 # ---------------------------------------------------------------
 .PHONY: debug
 debug: CFLAGS = $(CFLAGS_BASE) $(CFLAGS_DBG)
-debug: $(BIN)
+debug: $(BIN) ntree
 
 # ---------------------------------------------------------------
 # Install / uninstall
@@ -63,10 +66,10 @@ debug: $(BIN)
 install: $(BIN)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 755 $(BIN) $(DESTDIR)$(PREFIX)/bin/$(BIN)
-	ln -sf $(BIN) $(DESTDIR)$(PREFIX)/bin/ntree
+	ln -sf $(BIN) $(DESTDIR)$(PREFIX)/bin/ntree || cp $(BIN) $(DESTDIR)$(PREFIX)/bin/ntree
 	install -d $(DESTDIR)$(PREFIX)/share/man/man1
 	install -m 644 man/neotree.1 $(DESTDIR)$(PREFIX)/share/man/man1/neotree.1
-	ln -sf neotree.1 $(DESTDIR)$(PREFIX)/share/man/man1/ntree.1
+	ln -sf neotree.1 $(DESTDIR)$(PREFIX)/share/man/man1/ntree.1 || cp man/neotree.1 $(DESTDIR)$(PREFIX)/share/man/man1/ntree.1
 	@echo "Installed to $(PREFIX)/bin/$(BIN)"
 
 .PHONY: uninstall

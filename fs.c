@@ -208,6 +208,57 @@ int fs_is_dir(const char *path) {
 #endif /* _WIN32 */
 
 /* ==================================================================
+ * File attribute helpers (platform-specific)
+ * ================================================================== */
+
+#ifndef _WIN32
+
+long long fs_get_size(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+    return (long long)st.st_size;
+}
+
+long long fs_get_mtime(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    return (long long)st.st_mtime;
+}
+
+int fs_is_exec(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    return (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
+}
+
+#else /* _WIN32 */
+
+long long fs_get_size(const char *path) {
+    WIN32_FILE_ATTRIBUTE_DATA info;
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &info))
+        return -1LL;
+    return ((long long)info.nFileSizeHigh << 32) |
+           (long long)(unsigned long)info.nFileSizeLow;
+}
+
+long long fs_get_mtime(const char *path) {
+    WIN32_FILE_ATTRIBUTE_DATA info;
+    ULARGE_INTEGER uli;
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &info))
+        return 0LL;
+    uli.LowPart  = info.ftLastWriteTime.dwLowDateTime;
+    uli.HighPart = info.ftLastWriteTime.dwHighDateTime;
+    return (long long)((uli.QuadPart - 116444736000000000ULL) / 10000000ULL);
+}
+
+int fs_is_exec(const char *path) {
+    (void)path;
+    return 0; /* Windows has no exec bits; colouring is by extension */
+}
+
+#endif /* _WIN32 */
+
+/* ==================================================================
  * Shared helpers (platform-independent)
  * ================================================================== */
 

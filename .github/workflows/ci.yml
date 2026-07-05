@@ -46,5 +46,5 @@ jobs:
       - name: Build
         run: |
           x86_64-w64-mingw32-gcc -std=c99 -Wall -Wextra -Wpedantic -O2 \
-              main.c tree.c fs.c cli.c utils.c find.c \
+              main.c tree.c fs.c cli.c utils.c find.c largest.c \
               -o neotree-windows.exe

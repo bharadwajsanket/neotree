@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.4] - 2026-07-06
+
+### Added
+- **JSON Export Mode (`--export-json <file>`)**: Traverses the directory tree in a single pass and writes a structured pretty-printed JSON tree representation.
+- **Top-N Largest File Search (`--largest <N>`)**: Standalone search mode to locate and display the top N largest files in descending size order.
+- **Top-N Largest Directory Search (`--largest-dirs <N>`)**: Standalone search mode to locate and display the top N largest directories by recursive byte size.
+- **Enhanced Traversal Statistics**: `--stats` now includes additional fields: the full relative path of the deepest entry, the largest file (with size), and the largest directory (with size).
+- **Adaptive Terminal Width Truncation**: Filenames are automatically truncated with `…` when rendering would exceed the terminal width on TTY streams, preventing layout wrapping and display jitter.
+- **Output Size Alignment**: File size annotations are right-aligned to a uniform column within each directory directory.
+- **Strict Conversion Verification**: Enabled `-Wconversion` and `-Wsign-conversion` compilation safety checks.
+
+### Fixed
+- **Nested Directory Display in --largest-dirs**: Resolved a display path bug where nested directories merged incorrectly (e.g. `./.githubworkflows` instead of `./.github/workflows`).
+- **Unified JSON Export Walk**: Consolidated JSON export directly into the core `tree_walk` to completely eliminate duplicate I/O traversal and filtering.
+
 ## [1.5.4] - 2026-06-09
 
 ### Added

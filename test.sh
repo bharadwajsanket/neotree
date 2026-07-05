@@ -8,7 +8,7 @@ set -euo pipefail
 # Cleanup all test artifacts on exit (success or failure)
 cleanup() {
     rm -rf test_find_sandbox test_multi_1 test_multi_2 test_link test_unicode
-    rm -f tree.txt tree.md both.txt both.md out.txt ntree
+    rm -f tree.txt tree.md both.txt both.md out.txt ntree tree.json both.json
 }
 trap cleanup EXIT
 
@@ -17,7 +17,7 @@ echo "BUILD"
 echo "============================================"
 
 ${CC:-gcc} -std=c99 -Wall -Wextra -Wpedantic -O2 \
-  main.c tree.c fs.c cli.c utils.c find.c \
+  main.c tree.c fs.c cli.c utils.c find.c largest.c \
   -o neotree
 
 # Create local symlink for alias testing
@@ -147,7 +147,7 @@ rm -rf test_find_sandbox/node_modules
 
 echo ""
 echo "============================================"
-echo "EXPORT TXT & MARKDOWN"
+echo "EXPORT TXT, MARKDOWN & JSON"
 echo "============================================"
 
 ./ntree --export-txt tree.txt
@@ -158,11 +158,24 @@ cat tree.txt
 echo "--- tree.md ---"
 cat tree.md
 
-./ntree --export-txt both.txt --export-markdown both.md
+./ntree --export-json tree.json
+echo "--- tree.json ---"
+cat tree.json
+
+# Validate JSON is correct RFC8259
+if command -v python3 >/dev/null 2>&1; then
+    python3 -c "import json; json.load(open('tree.json'))" && echo "JSON Validity: OK"
+else
+    echo "Python3 not found, skipping JSON validation"
+fi
+
+./ntree --export-txt both.txt --export-markdown both.md --export-json both.json
 echo "--- both.txt ---"
 head -15 both.txt
 echo "--- both.md ---"
 head -15 both.md
+echo "--- both.json ---"
+head -15 both.json
 
 echo ""
 echo "============================================"
@@ -181,7 +194,20 @@ echo "============================================"
 ./ntree --reverse || echo "Failed as expected: --reverse without --sort"
 ./ntree --export-markdown || echo "Failed as expected"
 ./ntree --export-txt || echo "Failed as expected"
+./ntree --export-json || echo "Failed as expected"
+./ntree --largest || echo "Failed as expected"
+./ntree --largest-dirs || echo "Failed as expected"
 ./ntree /nonexistent || echo "Failed as expected"
+
+echo ""
+echo "============================================"
+echo "LARGEST SEARCH"
+echo "============================================"
+
+echo "--- --largest 3 ---"
+./ntree --largest 3
+echo "--- --largest-dirs 3 --all ---"
+./ntree --largest-dirs 3 --all
 
 echo ""
 echo "============================================"

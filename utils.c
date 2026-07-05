@@ -441,3 +441,112 @@ void format_size(long long bytes, char *buf, size_t buf_size) {
         snprintf(buf, buf_size, "%.1f GB", gb);
     }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Terminal width                                                      */
+/* ------------------------------------------------------------------ */
+
+/*
+ * POSIX: ioctl(STDOUT_FILENO, TIOCGWINSZ, ...) gives ws_col.
+ * Windows: GetConsoleScreenBufferInfo gives srWindow.Right - Left + 1.
+ * Fallback: 80 when detection fails.
+ * 0 is stored when stdout is not a TTY (piped) -- no truncation.
+ */
+
+#ifndef _WIN32
+#  include <sys/ioctl.h>
+#endif
+
+static int g_term_width = 0;
+
+void term_width_init(void) {
+    if (!IS_TTY(STDOUT_FD)) {
+        g_term_width = 0;  /* piped -- no truncation */
+        return;
+    }
+#ifdef _WIN32
+    {
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+            g_term_width = (int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+        else
+            g_term_width = 80;
+    }
+#else
+    {
+        struct winsize ws;
+        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0)
+            g_term_width = (int)ws.ws_col;
+        else
+            g_term_width = 80;
+    }
+#endif
+}
+
+int get_terminal_width(void) { return g_term_width; }
+
+/* ------------------------------------------------------------------ */
+/*  UTF-8 safe truncation                                               */
+/* ------------------------------------------------------------------ */
+
+int utf8_truncate(char *dst, size_t dst_size, const char *src, int max_cols) {
+    /* U+2026 HORIZONTAL ELLIPSIS: 3 UTF-8 bytes */
+    static const char ELLIPSIS[4] = "\xe2\x80\xa6";
+    static const int  ELLIPSIS_BYTES = 3;
+    const char *p;
+    int cols;
+    int char_bytes;
+    size_t prefix_bytes;
+    unsigned char c;
+
+    if (dst_size == 0) return 0;
+    if (max_cols <= 0) { dst[0] = '\0'; return 0; }
+
+    /* First pass: count columns needed */
+    p    = src;
+    cols = 0;
+    while (*p) {
+        c = (unsigned char)*p;
+        if      (c < 0x80) char_bytes = 1;
+        else if (c < 0xE0) char_bytes = 2;
+        else if (c < 0xF0) char_bytes = 3;
+        else               char_bytes = 4;
+        if (cols + 1 > max_cols) goto needs_truncation;
+        cols++;
+        p += char_bytes;
+    }
+    /* Fits without truncation */
+    {
+        size_t len = (size_t)(p - src);
+        if (len >= dst_size) len = dst_size - 1;
+        memcpy(dst, src, len);
+        dst[len] = '\0';
+    }
+    return 0;
+
+needs_truncation:
+    /* Second pass: fit (max_cols-1) columns, then append ellipsis */
+    if (max_cols <= 1 || dst_size <= (size_t)ELLIPSIS_BYTES + 1) {
+        dst[0] = '\0';
+        return 1;
+    }
+    p    = src;
+    cols = 0;
+    while (*p) {
+        c = (unsigned char)*p;
+        if      (c < 0x80) char_bytes = 1;
+        else if (c < 0xE0) char_bytes = 2;
+        else if (c < 0xF0) char_bytes = 3;
+        else               char_bytes = 4;
+        if (cols + 1 > max_cols - 1) break;
+        cols++;
+        p += char_bytes;
+    }
+    prefix_bytes = (size_t)(p - src);
+    if (prefix_bytes + (size_t)ELLIPSIS_BYTES + 1 > dst_size)
+        prefix_bytes = dst_size - (size_t)ELLIPSIS_BYTES - 1;
+    memcpy(dst, src, prefix_bytes);
+    memcpy(dst + prefix_bytes, ELLIPSIS, (size_t)ELLIPSIS_BYTES);
+    dst[prefix_bytes + (size_t)ELLIPSIS_BYTES] = '\0';
+    return 1;
+}

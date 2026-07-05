@@ -19,6 +19,8 @@ tree.md
 both.txt
 both.md
 out.txt
+tree.json
+both.json
 
 # test sandbox directories (created / removed by test.sh)
 test_sandbox/
@@ -27,3 +29,5 @@ test_multi_1/
 test_multi_2/
 test_link/
 test_unicode/
+stress_sandbox/
+fuzz_sandbox/

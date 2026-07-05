@@ -1,4 +1,4 @@
-.TH NEOTREE 1 "June 2026" "neotree v1.5.4" "General Commands Manual"
+.TH NEOTREE 1 "July 2026" "neotree v2.5.4" "General Commands Manual"
 .SH NAME
 neotree, ntree \- display a directory tree
 .SH SYNOPSIS
@@ -68,8 +68,13 @@ Requires
 .BR \-\-sort .
 .TP
 .B \-\-stats
-Print traversal statistics (directory count, file count, total size)
-and a frequency-sorted extension breakdown.
+Print statistics including directory count, file count, max depth, total size, deepest path, largest file, and largest directory.
+.TP
+.BI \-\-largest \ N
+Query standalone mode to print the top N largest files in descending order.
+.TP
+.BI \-\-largest-dirs \ N
+Query standalone mode to print the top N largest directories by recursive byte size.
 .TP
 .BI \-\-find \ query
 Isolated file search by name, glob, or path (comma-separated).
@@ -87,6 +92,10 @@ Write plain-text tree (no ANSI codes) to
 .TP
 .BI \-\-export-markdown \ file
 Write a fenced code-block markdown tree to
+.IR file .
+.TP
+.BI \-\-export-json \ file
+Write a structured JSON tree representation to
 .IR file .
 .TP
 .B \-\-no-color
@@ -121,6 +130,18 @@ Show directory structure only, two levels deep:
 Sort files by size, largest first:
 .IP
 .B neotree --sort size --reverse
+.PP
+Export directory tree as JSON:
+.IP
+.B neotree --export-json project.json
+.PP
+Find top 10 largest files recursively:
+.IP
+.B neotree --largest 10
+.PP
+Find top 5 largest directories by recursive byte size:
+.IP
+.B neotree --largest-dirs 5
 .SH CAVEATS
 .SS Shell Wildcard Expansion
 Command-line wildcards (e.g.

@@ -10,7 +10,7 @@
 
 #define CLI_MAX_IGNORE   64    /* max --ignore entries (CLI + .gitignore) */
 #define CLI_MAX_ROOTS    64    /* max root paths allowed */
-#define CLI_VERSION      "1.5.4"
+#define CLI_VERSION      "2.5.4"
 #define CLI_PROGRAM      "neotree"
 
 /* ------------------------------------------------------------------ */
@@ -43,6 +43,10 @@ typedef struct {
     const char *find_dir;       /* query for directory search          */
     const char *export_txt;     /* path for plain-text export; NULL=no */
     const char *export_md;      /* path for markdown export;  NULL=no  */
+    const char *export_json;    /* path for JSON export;      NULL=no  */
+
+    int         largest_n;      /* --largest N; 0 = disabled           */
+    int         largest_dirs_n; /* --largest-dirs N; 0 = disabled      */
 
     const char *ignore[CLI_MAX_IGNORE];
     int         ignore_count;

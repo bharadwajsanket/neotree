@@ -4,7 +4,7 @@
 
 **A fast, minimal directory tree utility for developers.**
 
-[![Version](https://img.shields.io/badge/version-v1.5.4-6C63FF?style=flat-square)](https://github.com/bharadwajsanket/neotree/releases)
+[![Version](https://img.shields.io/badge/version-v2.5.4-6C63FF?style=flat-square)](https://github.com/bharadwajsanket/neotree/releases)
 [![CI](https://github.com/bharadwajsanket/neotree/actions/workflows/ci.yml/badge.svg)](https://github.com/bharadwajsanket/neotree/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-blue?style=flat-square)](./LICENSE)
 
@@ -103,9 +103,10 @@ It deliberately avoids interactive TUIs, plugin systems, fuzzy search, configura
 | **Filetype colors** | ANSI coloring by extension — `.c`, `.py`, `.md`, images, shell scripts |
 | **Glob filtering** | `*.c`, `**/*.h`, `src/**/*.h` — path-aware recursive matching |
 | **Sorting** | Sort by `name`, `size`, or `modified` within directory-first groups |
-| **Traversal stats** | File counts, total size, extension breakdown via `--stats` |
+| **Traversal stats** | File counts, total size, extension breakdown, largest file, largest dir, deepest path via `--stats` |
 | **Find mode** | Isolated path lookups via `--find` and `--find-dir` |
-| **Export** | Plain-text or fenced markdown tree output |
+| **Export** | Plain-text, fenced markdown, or structured JSON tree output |
+| **Largest search** | Standalone mode to query top-N largest files or directories |
 | **Ignore rules** | `--ignore`, `.gitignore` auto-loading, built-in defaults |
 | **Depth limit** | `-L <n>` stops recursion at any level |
 | **Zero dependencies** | Pure C99, no libraries, no runtime, no config |
@@ -129,11 +130,14 @@ neotree [OPTIONS] [PATH...]
 | `--size` | off | Show file sizes next to each file |
 | `--sort <key>` | `name` | Sort: `name`, `size`, or `modified` (most recently modified first) |
 | `--reverse` | off | Reverse sort order (requires `--sort`) |
-| `--stats` | off | Print traversal statistics and extension breakdown |
+| `--stats` | off | Print statistics (including largest file, largest dir, deepest path) |
+| `--largest <N>` | — | Print top N largest files in descending order |
+| `--largest-dirs <N>` | — | Print top N largest directories by recursive byte size |
 | `--find <query>` | — | Isolated file search — comma-separated, glob-aware |
 | `--find-dir <query>` | — | Isolated directory search — comma-separated, glob-aware |
 | `--export-txt <file>` | — | Write plain-text tree (no ANSI codes) |
 | `--export-markdown <file>` | — | Write fenced markdown tree |
+| `--export-json <file>` | — | Write structured JSON tree |
 | `--no-color` | off | Disable ANSI color output |
 | `--no-dirs-first` | off | Disable directory-first ordering |
 | `-h`, `--help` | — | Show help and exit |
@@ -183,6 +187,43 @@ neotree --sort modified --reverse # oldest first
 ```
 
 `--reverse` requires `--sort`.
+
+---
+
+## JSON Export
+
+With `--export-json <file>`, neotree writes a structured JSON representation of the traversed directory tree.
+
+```json
+{
+  "name": "src",
+  "path": "src",
+  "type": "dir",
+  "size": -1,
+  "mtime": 0,
+  "children": [
+    {
+      "name": "main.c",
+      "path": "src/main.c",
+      "type": "file",
+      "size": 15729,
+      "mtime": 1780958811,
+      "children": null
+    }
+  ]
+}
+```
+
+---
+
+## Largest search (top-N)
+
+Standalone search options to locate the largest files or directories. These bypass tree rendering and print sorted descending tables.
+
+```bash
+neotree --largest 5           # show top 5 largest files
+neotree --largest-dirs 10     # show top 10 largest directories by recursive size
+```
 
 ---
 
@@ -249,8 +290,8 @@ brew uninstall neotree && brew untap bharadwajsanket/neotree
 
 **install.sh:**
 ```bash
-sudo rm -f /usr/local/bin/neotree /usr/local/bin/ntree
-sudo rm -f /usr/local/share/man/man1/neotree.1 /usr/local/share/man/man1/ntree.1
+# Run the remote installer in uninstall mode:
+curl -sSL https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.sh | bash -s -- --uninstall
 ```
 
 **make install:**
@@ -260,8 +301,8 @@ sudo make uninstall
 
 **Windows:**
 ```powershell
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\neotree"
-# Remove the install directory from your user PATH as well.
+# Run the remote installer in uninstall mode:
+$env:UNINSTALL = $true; irm https://raw.githubusercontent.com/bharadwajsanket/neotree/main/install.ps1 | iex
 ```
 
 ---

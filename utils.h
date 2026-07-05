@@ -157,4 +157,34 @@ typedef struct {
 void ext_table_init(ext_table_t *t);
 void ext_table_add(ext_table_t *t, const char *filename);
 
+/* ------------------------------------------------------------------ */
+/*  Terminal width                                                      */
+/* ------------------------------------------------------------------ */
+
+/*
+ * term_width_init -- call once at startup (after color_init).
+ *   Detects the current terminal column width.
+ *   When stdout is not a TTY, stores 0 ("no truncation").
+ */
+void term_width_init(void);
+
+/*
+ * get_terminal_width -- returns detected column width.
+ *   0 means "not a TTY / unknown" -- callers must not truncate.
+ */
+int get_terminal_width(void);
+
+/*
+ * utf8_truncate -- truncate src to at most max_cols display columns.
+ *   Writes result into dst (must be >= dst_size bytes).
+ *   Appends U+2026 (HORIZONTAL ELLIPSIS, 3 UTF-8 bytes) when truncated.
+ *   Returns 1 if truncated, 0 if src fit without truncation.
+ *
+ *   Simplified rule: every UTF-8 code point counts as 1 display column
+ *   (correct for Latin, incorrect for wide CJK -- acceptable for a
+ *   zero-dependency tool; accurate for the overwhelming majority of
+ *   real-world filenames).
+ */
+int utf8_truncate(char *dst, size_t dst_size, const char *src, int max_cols);
+
 #endif /* UTILS_H */
