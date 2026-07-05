@@ -23,6 +23,7 @@
  */
 #ifdef _WIN32
 #  include <io.h>
+#  include <windows.h>
 #  define IS_TTY(fd)  _isatty(fd)
 #  define STDOUT_FD   1
 #else
